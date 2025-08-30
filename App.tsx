@@ -2,13 +2,13 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Chat, Content, Part } from '@google/genai';
 import { ChatMessage as ChatMessageType, GroundingChunk, Tool, AppError, Suggestion, Conversation, ChatModel, ModelInfo, LTM, CodeSnippet } from './types';
-import { startChatSession, planResponse, generateImage, editImage, updateMemory, summarizeConversation, processAndSaveCode, findRelevantCode } from './services/geminiService';
+import { initializeAiClient, startChatSession, planResponse, generateImage, editImage, updateMemory, summarizeConversation, processAndSaveCode, findRelevantCode } from './services/geminiService';
 import Header from './components/Header';
 import ChatHistory from './components/ChatHistory';
 import ChatInput from './components/ChatInput';
 import WelcomeScreen from './components/WelcomeScreen';
 import ImageOptionsModal, { ImageGenerationOptions } from './components/ImageOptionsModal';
-import ApiKeyErrorScreen from './components/ApiKeyErrorScreen';
+import ApiKeyModal from './components/ApiKeyModal';
 import Gallery from './components/Gallery';
 import ChatHistorySheet from './components/ChatHistorySheet';
 import ImagePromptSuggestions from './components/ImagePromptSuggestions';
@@ -76,9 +76,8 @@ const App: React.FC = () => {
   const [isHistorySheetOpen, setIsHistorySheetOpen] = useState(false);
   const [ltm, setLtm] = useState<LTM>([]);
   const [codeMemory, setCodeMemory] = useState<CodeSnippet[]>([]);
+  const [apiKey, setApiKey] = useState<string | null>(null);
   
-  const API_KEY = process.env.API_KEY;
-
   const thinkingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const thinkingStepRef = useRef(0);
@@ -99,6 +98,19 @@ const App: React.FC = () => {
   }, [conversations]);
   
   const showWelcomeScreen = !activeConversation || activeConversation.messages.length === 0;
+
+  useEffect(() => {
+    const storedApiKey = localStorage.getItem('kalina_api_key');
+    if (storedApiKey) {
+        try {
+            initializeAiClient(storedApiKey);
+            setApiKey(storedApiKey);
+        } catch (e) {
+            console.error("Failed to initialize with stored API key:", e);
+            localStorage.removeItem('kalina_api_key'); // Clear bad key
+        }
+    }
+  }, []);
   
   useEffect(() => {
     try {
@@ -208,7 +220,7 @@ const App: React.FC = () => {
   }, [clearThinkingIntervals]);
 
   const handleExecuteImageGeneration = useCallback(async (options: ImageGenerationOptions) => {
-    if (!API_KEY || !activeConversationId) return;
+    if (!apiKey || !activeConversationId) return;
 
     const conversationForTitle = conversations.find(c => c.id === activeConversationId);
     const shouldGenerateTitle = conversationForTitle?.messages.length === 0;
@@ -254,11 +266,11 @@ const App: React.FC = () => {
       setIsLoading(false);
       setImageGenerationPrompt('');
     }
-  }, [API_KEY, imageGenerationPrompt, activeConversationId, conversations]);
+  }, [apiKey, imageGenerationPrompt, activeConversationId, conversations]);
   
   const handleSendMessage = useCallback(async (prompt: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; }) => {
     const fullPrompt = prompt;
-    if ((!fullPrompt.trim() && !image && !file) || isLoading || !API_KEY) return;
+    if ((!fullPrompt.trim() && !image && !file) || isLoading || !apiKey) return;
     
     let currentConversationId = activeConversationId;
     let isFirstTurnInConversation = false;
@@ -599,7 +611,7 @@ const App: React.FC = () => {
         setIsSearchingWeb(false);
         setActiveSuggestion(null);
     }
-  }, [isLoading, selectedTool, clearThinkingIntervals, API_KEY, activeConversationId, conversations, selectedChatModel, ltm, codeMemory]);
+  }, [isLoading, selectedTool, clearThinkingIntervals, apiKey, activeConversationId, conversations, selectedChatModel, ltm, codeMemory]);
 
   const handleSelectConversation = (id: string) => {
     setActiveConversationId(id);
@@ -685,9 +697,20 @@ const App: React.FC = () => {
         setSpeakingMessageId(id);
     }
   };
+
+    const handleSetApiKey = (key: string) => {
+      try {
+          initializeAiClient(key);
+          localStorage.setItem('kalina_api_key', key);
+          setApiKey(key);
+      } catch (e) {
+          console.error("Failed to set API key:", e);
+          // Here you might want to show an error in the modal
+      }
+  };
   
-  if (!API_KEY) {
-    return <ApiKeyErrorScreen />;
+  if (!apiKey) {
+    return <ApiKeyModal onSetApiKey={handleSetApiKey} />;
   }
   
   const renderCurrentView = () => {

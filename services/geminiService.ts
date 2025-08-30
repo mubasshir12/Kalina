@@ -4,15 +4,20 @@ import { LTM, CodeSnippet } from "../types";
 
 let aiClient: GoogleGenAI | null = null;
 
-const getAiClient = (): GoogleGenAI => {
-    if (!process.env.API_KEY) {
-        throw new Error("API_KEY environment variable not set.");
+export const initializeAiClient = (apiKey: string) => {
+    if (!apiKey) {
+        throw new Error("API key is required to initialize the AI client.");
     }
+    aiClient = new GoogleGenAI({ apiKey: apiKey });
+};
+
+const getAiClient = (): GoogleGenAI => {
     if (!aiClient) {
-        aiClient = new GoogleGenAI({ apiKey: "AIzaSyBnLoSdk5Mn-vTW3DFcfeTSFtMZ4M2h4Ag" });
+        throw new Error("AI Client not initialized. Please set your API key.");
     }
     return aiClient;
 };
+
 
 const planAndThinkSystemInstruction = `You are a highly intelligent router and planner. Your task is to analyze the user's prompt and determine the most effective strategy to respond.
 
