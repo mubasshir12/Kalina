@@ -12,6 +12,13 @@
       body {
         font-family: 'Inter', sans-serif;
       }
+      .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+      }
+      .scrollbar-hide {
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
+      }
     </style>
     <script>
       // On page load or when changing themes, best to add inline in `head` to avoid FOUC

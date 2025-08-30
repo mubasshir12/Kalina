@@ -1,8 +1,82 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { GroundingChunk } from '../types';
+import { Copy, Check, Play } from 'lucide-react';
+import CodePreviewModal from './CodePreviewModal';
 
-// Renders a single source citation as a clickable favicon.
+// NEW COMPONENT: CodeBlock
+interface CodeBlockProps {
+    language: string;
+    code: string;
+}
+
+const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
+    const [isCopied, setIsCopied] = useState(false);
+    const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+    const isRunnable = ['html', 'htmlbars'].includes(language.toLowerCase());
+
+    const handleCopy = async () => {
+        try {
+            await navigator.clipboard.writeText(code);
+            setIsCopied(true);
+            setTimeout(() => setIsCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy code: ', err);
+        }
+    };
+
+    return (
+        <>
+            {isRunnable && isPreviewOpen && (
+                <CodePreviewModal htmlContent={code} onClose={() => setIsPreviewOpen(false)} />
+            )}
+            <div className="bg-gray-100 dark:bg-[#1e1f22] rounded-lg my-4 border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="flex justify-between items-center px-4 py-2 bg-gray-200 dark:bg-gray-800/50">
+                    <span className="text-xs font-sans text-gray-500 dark:text-gray-400 uppercase font-semibold">
+                        {language || 'code'}
+                    </span>
+                    <div className="flex items-center gap-4">
+                        {isRunnable && (
+                             <button
+                                onClick={() => setIsPreviewOpen(true)}
+                                className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                                aria-label="Run code"
+                            >
+                                <Play className="h-3.5 w-3.5" />
+                                <span>Run</span>
+                            </button>
+                        )}
+                        <button
+                            onClick={handleCopy}
+                            className="flex items-center gap-1.5 text-xs text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
+                            aria-label={isCopied ? 'Copied' : 'Copy code'}
+                        >
+                            {isCopied ? (
+                                <>
+                                    <Check className="h-3.5 w-3.5 text-green-500" />
+                                    <span>Copied!</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Copy className="h-3.5 w-3.5" />
+                                    <span>Copy</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
+                </div>
+                <pre className="p-4 text-sm overflow-x-auto">
+                    <code className={`font-mono language-${language}`}>
+                        {code}
+                    </code>
+                </pre>
+            </div>
+        </>
+    );
+};
+
+
+// Renders a single source citation as a clickable text-based tag.
 const Citation: React.FC<{ source: GroundingChunk; index: number }> = ({ source, index }) => {
     // Return a fallback if the source or its URI is missing.
     if (!source?.web?.uri) {
@@ -10,34 +84,20 @@ const Citation: React.FC<{ source: GroundingChunk; index: number }> = ({ source,
     }
 
     try {
-        const hostname = new URL(source.web.uri).hostname;
-        const faviconUrl = `https://www.google.com/s2/favicons?sz=16&domain_url=${hostname}`;
-        const title = source.web.title ? `${source.web.title}\n${source.web.uri}` : source.web.uri;
+        const hostname = new URL(source.web.uri).hostname.replace(/^www\./, '');
+        // Use the title if available, otherwise fallback to the hostname.
+        const displayName = source.web.title || hostname;
+        const fullTitle = source.web.title ? `${source.web.title}\n${source.web.uri}` : source.web.uri;
 
         return (
             <a
                 href={source.web.uri}
                 target="_blank"
                 rel="noopener noreferrer"
-                title={title}
-                className="inline-flex items-center justify-center align-middle w-5 h-5 mx-0.5 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                title={fullTitle}
+                className="inline-block align-baseline ml-1 px-2 py-0.5 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-full text-xs font-medium no-underline hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors"
             >
-                <img
-                    src={faviconUrl}
-                    alt={`Source: ${hostname}`}
-                    className="w-3 h-3 object-contain"
-                    onError={(e) => {
-                        // If the favicon fails to load, replace it with the citation number.
-                        const parent = e.currentTarget.parentElement;
-                        if (parent) {
-                            const span = document.createElement('span');
-                            span.className = "text-xs font-bold leading-5 text-gray-500 dark:text-gray-400";
-                            span.textContent = `${index + 1}`;
-                            parent.innerHTML = '';
-                            parent.appendChild(span);
-                        }
-                    }}
-                />
+                {displayName}
             </a>
         );
     } catch (e) {
@@ -46,6 +106,7 @@ const Citation: React.FC<{ source: GroundingChunk; index: number }> = ({ source,
     }
 };
 
+
 // Parses inline markdown: **bold**, *italic*, citations [1], and links.
 const parseInline = (text: string, sources?: GroundingChunk[]): React.ReactNode => {
     const regex = /(\*\*.*?\*\*|__.*?__|\*.*?\*|_.*?_|\[\d+\]|https?:\/\/\S+|www\.\S+)/g;
@@ -53,11 +114,15 @@ const parseInline = (text: string, sources?: GroundingChunk[]): React.ReactNode 
 
     return text.split(regex).filter(Boolean).map((part, i) => {
         const citationMatch = part.match(/^\[(\d+)\]$/);
-        if (citationMatch && sources) {
-            const index = parseInt(citationMatch[1], 10) - 1;
-            if (index >= 0 && index < sources.length) {
-                return <Citation key={i} source={sources[index]} index={index} />;
+        if (citationMatch) {
+            if (sources) {
+                const index = parseInt(citationMatch[1], 10) - 1;
+                if (index >= 0 && index < sources.length) {
+                    return <Citation key={i} source={sources[index]} index={index} />;
+                }
             }
+            // If no sources or index out of bounds, render nothing for the citation.
+            return null;
         }
 
         if ((part.startsWith('**') && part.endsWith('**')) || (part.startsWith('__') && part.endsWith('__'))) {
@@ -75,7 +140,7 @@ const parseInline = (text: string, sources?: GroundingChunk[]): React.ReactNode 
                     href={href}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-indigo-500 dark:text-indigo-400 hover:underline break-all"
+                    className="text-indigo-600 dark:text-indigo-400 bg-indigo-100/80 dark:bg-indigo-900/50 hover:bg-indigo-200/80 dark:hover:bg-indigo-800/60 font-medium px-2 py-0.5 rounded-full no-underline hover:underline break-all"
                 >
                     {part}
                 </a>
@@ -90,6 +155,10 @@ const MarkdownRenderer: React.FC<{ content: string; sources?: GroundingChunk[] }
     const lines = content.split('\n');
     const elements: React.ReactNode[] = [];
     let currentList: { type: 'ul' | 'ol'; items: React.ReactNode[] } | null = null;
+    
+    let inCodeBlock = false;
+    let codeBlockContent: string[] = [];
+    let codeBlockLanguage = '';
 
     const flushList = (key: string | number) => {
         if (currentList) {
@@ -109,22 +178,52 @@ const MarkdownRenderer: React.FC<{ content: string; sources?: GroundingChunk[] }
     };
 
     lines.forEach((line, index) => {
-        if (line.startsWith('# ')) {
-            flushList(`list-before-h1-${index}`);
-            elements.push(<h1 key={index} className="text-2xl font-bold mt-5 mb-2">{parseInline(line.substring(2), sources)}</h1>);
+        // Code blocks
+        if (line.trim().startsWith('```')) {
+            flushList(`list-before-code-${index}`);
+            if (inCodeBlock) {
+                elements.push(<CodeBlock key={`code-${index}`} language={codeBlockLanguage} code={codeBlockContent.join('\n')} />);
+                inCodeBlock = false;
+                codeBlockContent = [];
+                codeBlockLanguage = '';
+            } else {
+                inCodeBlock = true;
+                codeBlockLanguage = line.trim().substring(3).trim();
+            }
             return;
         }
-        if (line.startsWith('## ')) {
-            flushList(`list-before-h2-${index}`);
-            elements.push(<h2 key={index} className="text-xl font-bold mt-4 mb-1">{parseInline(line.substring(3), sources)}</h2>);
+
+        if (inCodeBlock) {
+            codeBlockContent.push(line);
             return;
         }
-        if (line.startsWith('### ')) {
-            flushList(`list-before-h3-${index}`);
-            elements.push(<h3 key={index} className="text-lg font-bold mt-3 mb-1">{parseInline(line.substring(4), sources)}</h3>);
+
+        // Horizontal Rules
+        if (line.match(/^(---|___|\*\*\*)\s*$/)) {
+            flushList(`list-before-hr-${index}`);
+            elements.push(<hr key={index} className="my-4 border-gray-200 dark:border-gray-700" />);
             return;
         }
         
+        // Headings (h1-h6)
+        const headingMatch = line.match(/^(#{1,6})\s+(.*)/);
+        if (headingMatch) {
+            flushList(`list-before-h-${index}`);
+            const level = headingMatch[1].length;
+            const Tag = `h${level}` as keyof JSX.IntrinsicElements;
+            const text = headingMatch[2];
+            const classNames = [
+                "font-bold",
+                level === 1 ? "text-2xl mt-5 mb-2" : "",
+                level === 2 ? "text-xl mt-4 mb-1" : "",
+                level === 3 ? "text-lg mt-3 mb-1" : "",
+                level >= 4 ? "text-base mt-2 mb-1" : ""
+            ].join(" ");
+            elements.push(<Tag key={index} className={classNames}>{parseInline(text, sources)}</Tag>);
+            return;
+        }
+        
+        // Unordered lists
         const ulMatch = line.match(/^(\s*)(\*|-)\s+(.*)/);
         if (ulMatch) {
             if (currentList?.type !== 'ul') {
@@ -135,6 +234,7 @@ const MarkdownRenderer: React.FC<{ content: string; sources?: GroundingChunk[] }
             return;
         }
 
+        // Ordered lists
         const olMatch = line.match(/^(\s*)(\d+)\.\s+(.*)/);
         if (olMatch) {
             if (currentList?.type !== 'ol') {
@@ -145,15 +245,21 @@ const MarkdownRenderer: React.FC<{ content: string; sources?: GroundingChunk[] }
             return;
         }
 
+        // Paragraphs and empty lines
         flushList(`list-before-p-${index}`);
         if (line.trim() !== '') {
             elements.push(<p key={index}>{parseInline(line, sources)}</p>);
         } else if (elements.length > 0 && lines[index-1]?.trim() !== '') {
+            // Add a spacer for intentional line breaks, but not for multiple empty lines
             elements.push(<div key={`spacer-${index}`} className="h-4"></div>);
         }
     });
 
     flushList('list-at-end');
+
+    if (inCodeBlock) {
+        elements.push(<CodeBlock key="code-at-end" language={codeBlockLanguage} code={codeBlockContent.join('\n')} />);
+    }
 
     return <>{elements}</>;
 };

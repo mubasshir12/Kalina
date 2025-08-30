@@ -1,12 +1,8 @@
 
-import React, { useState, useEffect } from 'react';
-import { ChatMessage } from '../types';
-import { generateImagePromptSuggestions } from '../services/geminiService';
+import React from 'react';
 
 interface ImagePromptSuggestionsProps {
-  messages: ChatMessage[];
   onSelectPrompt: (prompt: string) => void;
-  apiKey: string | null;
 }
 
 const defaultSuggestions = [
@@ -15,78 +11,93 @@ const defaultSuggestions = [
   "A magical forest with glowing mushrooms and whimsical creatures, fantasy art",
   "A majestic dragon perched on a mountain peak, epic, digital painting",
   "A vintage robot serving tea in a Victorian-era room, steampunk style",
-  "Abstract art representing the feeling of joy, vibrant colors, swirling patterns"
+  "Abstract art representing the feeling of joy, vibrant colors, swirling patterns",
+  "A tranquil zen garden with a cherry blossom tree, minimalist",
+  "A bustling medieval marketplace, full of life and detail",
+  "A futuristic high-speed train traveling through a mountain pass",
+  "An enchanted library with floating books and ancient scrolls"
 ];
 
-const SuggestionSkeleton: React.FC = () => (
-    <div className="px-3 py-1.5 h-[30px] w-64 bg-gray-200 dark:bg-gray-700/70 rounded-full animate-pulse flex-shrink-0" />
-);
-
-
-const ImagePromptSuggestions: React.FC<ImagePromptSuggestionsProps> = ({ messages, onSelectPrompt, apiKey }) => {
-  const [suggestions, setSuggestions] = useState<string[]>(defaultSuggestions);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  useEffect(() => {
-    const fetchSuggestions = async (prompt: string) => {
-        if (!apiKey) return;
-        setIsLoading(true);
-        try {
-            const newSuggestions = await generateImagePromptSuggestions(apiKey, prompt);
-            if (newSuggestions && newSuggestions.length > 0) {
-                setSuggestions(newSuggestions);
-            } else {
-                // If API returns empty, fall back to default but don't show loading forever
-                setSuggestions(defaultSuggestions);
-            }
-        } catch (error) {
-            console.error("Failed to fetch image prompt suggestions:", error);
-            // Fall back to default on error
-            setSuggestions(defaultSuggestions);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const lastMessage = messages[messages.length - 1];
-
-    if (lastMessage?.role === 'model' && lastMessage.generatedImagesBase64 && lastMessage.generatedImagesBase64.length > 0) {
-        let lastUserPrompt = '';
-        for (let i = messages.length - 2; i >= 0; i--) {
-            if (messages[i].role === 'user') {
-                lastUserPrompt = messages[i].content;
-                break;
-            }
-        }
-
-        if (lastUserPrompt) {
-            fetchSuggestions(lastUserPrompt);
-        }
-    } else if (messages.length === 0 && suggestions !== defaultSuggestions) {
-        // Reset to default if chat is cleared
-        setSuggestions(defaultSuggestions);
+const truncateText = (text: string, maxLength: number): string => {
+    if (text.length <= maxLength) {
+        return text;
     }
+    return text.slice(0, maxLength - 1) + '…';
+};
 
-  }, [messages, apiKey]);
+const MarqueeRow: React.FC<{
+    prompts: string[];
+    onSelectPrompt: (prompt: string) => void;
+    direction?: 'left' | 'right';
+}> = ({ prompts, onSelectPrompt, direction = 'left' }) => {
+    const animationDuration = prompts.length * 8; // Adjust speed based on number of items
+    return (
+        <div className="marquee">
+            <div 
+                className="marquee-content"
+                style={{ 
+                    animationDuration: `${animationDuration}s`,
+                    animationDirection: direction === 'right' ? 'reverse' : 'normal'
+                }}
+            >
+                {[...prompts, ...prompts].map((prompt, i) => (
+                    <button
+                        key={`${prompt}-${i}`}
+                        onClick={() => onSelectPrompt(prompt)}
+                        className="relative w-48 h-20 rounded-lg overflow-hidden flex-shrink-0 group text-white text-left p-2.5"
+                        title={prompt}
+                    >
+                        <img
+                            src={`https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=200&height=100&seed=${i}`}
+                            alt={prompt}
+                            className="absolute inset-0 w-full h-full object-cover transition-all duration-300 ease-in-out group-hover:scale-110 filter brightness-[.55] group-hover:brightness-[.7]"
+                            crossOrigin="anonymous"
+                            loading="lazy"
+                        />
+                        <span className="relative z-10 text-xs font-semibold drop-shadow-md">
+                            {truncateText(prompt, 65)}
+                        </span>
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+
+const ImagePromptSuggestions: React.FC<ImagePromptSuggestionsProps> = ({ onSelectPrompt }) => {
+  const suggestions = defaultSuggestions;
+  const firstRowSuggestions = suggestions.slice(0, Math.ceil(suggestions.length / 2));
+  const secondRowSuggestions = suggestions.slice(Math.ceil(suggestions.length / 2));
 
   return (
-    <div className="mb-3 w-full overflow-hidden">
-      <div className="flex items-center gap-2 pb-2 overflow-x-auto whitespace-nowrap scrollbar-hide">
-        {isLoading ? (
-            Array.from({ length: 5 }).map((_, i) => <SuggestionSkeleton key={i} />)
-        ) : (
-          suggestions.map((prompt, i) => (
-            <button
-              key={i}
-              onClick={() => onSelectPrompt(prompt)}
-              className="px-3 py-1.5 text-sm bg-gray-100 dark:bg-[#2E2F33] text-gray-700 dark:text-gray-300 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700/70 transition-colors flex-shrink-0"
-            >
-              {prompt}
-            </button>
-          ))
-        )}
-      </div>
-      <style>{`.scrollbar-hide::-webkit-scrollbar { display: none; } .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }`}</style>
+    <div className="mb-4 space-y-3 w-full overflow-hidden">
+        <style>{`
+            .marquee {
+                position: relative;
+                overflow: hidden;
+                -webkit-mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+                mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+            }
+            .marquee-content {
+                display: flex;
+                gap: 0.75rem; /* 12px */
+                animation-name: marquee;
+                animation-timing-function: linear;
+                animation-iteration-count: infinite;
+            }
+            .marquee:hover .marquee-content {
+                animation-play-state: paused;
+            }
+            @keyframes marquee {
+                from { transform: translateX(0); }
+                to { transform: translateX(calc(-100% - 0.75rem)); }
+            }
+        `}</style>
+        <>
+            <MarqueeRow prompts={firstRowSuggestions} onSelectPrompt={onSelectPrompt} direction="left" />
+            <MarqueeRow prompts={secondRowSuggestions} onSelectPrompt={onSelectPrompt} direction="right" />
+        </>
     </div>
   );
 };
