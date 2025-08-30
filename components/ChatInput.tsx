@@ -230,7 +230,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                       <SelectedIcon className="h-5 w-5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
                        <div className="text-left">
                           <p className="text-sm font-medium leading-none">{selectedToolObject.name}</p>
-                          <p className={"text-[12px] text-gray-500 dark:text-gray-400 transition-opacity duration-300 h-4 mt-0.5 ${selectedTool === 'smart' && isFading ? 'opacity-0' : 'opacity-100'}`}>
+                          <p className={`text-[10px] text-gray-500 dark:text-gray-400 transition-opacity duration-300 h-4 mt-0.5 ${selectedTool === 'smart' && isFading ? 'opacity-0' : 'opacity-100'}`}>
                               {selectedTool === 'smart' ? animatedDescription : selectedToolObject.description}
                           </p>
                       </div>
