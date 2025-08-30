@@ -230,7 +230,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                       <SelectedIcon className="h-5 w-5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
                        <div className="text-left">
                           <p className="text-sm font-medium leading-none">{selectedToolObject.name}</p>
-                          <p className={`text-[10px] text-gray-500 dark:text-gray-400 transition-opacity duration-300 h-4 mt-0.5 ${selectedTool === 'smart' && isFading ? 'opacity-0' : 'opacity-100'}`}>
+                          <p className={`text-[12px] text-gray-500 dark:text-gray-400 transition-opacity duration-300 h-4 mt-0.5 ${selectedTool === 'smart' && isFading ? 'opacity-0' : 'opacity-100'}`}>
                               {selectedTool === 'smart' ? animatedDescription : selectedToolObject.description}
                           </p>
                       </div>
@@ -382,7 +382,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                   <button
                       onClick={handleSend}
                       disabled={isLoading || (!input.trim() && !image && !file)}
-                      className="absolute right-2 bottom-2 p-2 pb-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-500 disabled:bg-gray-400 dark:disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors"
+                      className="absolute right-2 bottom-2 p-2 mb-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-500 disabled:bg-gray-400 dark:disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors"
                       aria-label="Send message"
                   >
                       <ArrowUp className="h-6 w-6" />
