@@ -9,7 +9,7 @@ const getAiClient = (): GoogleGenAI => {
         throw new Error("API_KEY environment variable not set.");
     }
     if (!aiClient) {
-        aiClient = new GoogleGenAI({ apiKey: process.env.API_KEY });
+        aiClient = new GoogleGenAI({ apiKey: "AIzaSyBnLoSdk5Mn-vTW3DFcfeTSFtMZ4M2h4Ag" });
     }
     return aiClient;
 };
