@@ -779,7 +779,7 @@ const App: React.FC = () => {
   };
   
   return (
-    <div className="flex flex-col h-screen bg-gray-50 dark:bg-[#131314] text-gray-900 dark:text-white transition-colors duration-300">
+    <div className="flex flex-col h-[100dvh] bg-gray-50 dark:bg-[#131314] text-gray-900 dark:text-white transition-colors duration-300">
         <Header
             onShowGallery={() => setCurrentView('gallery')}
             onShowMemory={() => setCurrentView('memory')}

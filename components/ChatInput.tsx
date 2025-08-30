@@ -230,7 +230,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                       <SelectedIcon className="h-5 w-5 text-indigo-500 dark:text-indigo-400 flex-shrink-0" />
                        <div className="text-left">
                           <p className="text-sm font-medium leading-none">{selectedToolObject.name}</p>
-                          <p className={`text-[10px] text-gray-500 dark:text-gray-400 transition-opacity duration-300 h-4 mt-0.5 ${selectedTool === 'smart' && isFading ? 'opacity-0' : 'opacity-100'}`}>
+                          <p className={`text-xs text-gray-500 dark:text-gray-400 transition-opacity duration-300 h-4 mt-0.5 ${selectedTool === 'smart' && isFading ? 'opacity-0' : 'opacity-100'}`}>
                               {selectedTool === 'smart' ? animatedDescription : selectedToolObject.description}
                           </p>
                       </div>
@@ -249,7 +249,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                                       <ToolIcon className="h-5 w-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
                                       <div>
                                           <p className="font-semibold text-sm">{tool.name}</p>
-                                          <p className="text-[12px] text-gray-500 dark:text-gray-400">{tool.description}</p>
+                                          <p className="text-xs text-gray-500 dark:text-gray-400">{tool.description}</p>
                                       </div>
                                  </button>
                              )
@@ -368,7 +368,7 @@ const ChatInput: React.FC<ChatInputProps> = ({
                   )}
               </div>
               <div className="relative flex-1">
-                  <textarea 
+                  <textarea
                       ref={textareaRef}
                       rows={1}
                       value={input}
@@ -377,12 +377,12 @@ const ChatInput: React.FC<ChatInputProps> = ({
                       onPaste={handlePaste}
                       placeholder={placeholderText()}
                       disabled={isLoading}
-                      className="w-full bg-gray-100 dark:bg-[#1e1f22] border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 rounded-2xl py-2 pl-5 placeholder:text-sx pr-14 min-h-[3.5rem] focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300 disabled:opacity-50 resize-none max-h-[8rem] overflow-y-auto scrollbar-hide"
+                      className="w-full bg-gray-100 dark:bg-[#1e1f22] border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 rounded-2xl py-2.5 pl-5 pr-14 min-h-[3.5rem] focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300 disabled:opacity-50 resize-none max-h-[8rem] overflow-y-auto scrollbar-hide"
                   />
                   <button
                       onClick={handleSend}
                       disabled={isLoading || (!input.trim() && !image && !file)}
-                      className="absolute right-2 bottom-2 p-2 mb-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-500 disabled:bg-gray-400 dark:disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors"
+                      className="absolute right-2 bottom-2 p-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-500 disabled:bg-gray-400 dark:disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors"
                       aria-label="Send message"
                   >
                       <ArrowUp className="h-6 w-6" />

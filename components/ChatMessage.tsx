@@ -272,7 +272,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                 )}
                 {content && (
                     <div className="max-w-2xl p-4 rounded-2xl bg-indigo-500 text-white rounded-br-none">
-                        <p className="leading-relaxed whitespace-pre-wrap">
+                        <p className="leading-relaxed whitespace-pre-wrap break-all">
                             {content}
                         </p>
                     </div>

@@ -42,12 +42,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectSuggestion }) => 
             What can I help with?
         </h1>
       </div>
-      <div className="flex flex-wrap justify-center items-center gap-3 w-full max-w-xl">
+      <div className="flex flex-wrap justify-center items-center gap-3 w-full max-w-2xl">
         {suggestions.map((suggestion, index) => (
             <button
                 key={index}
                 onClick={() => onSelectSuggestion(suggestion)}
-                className="flex items-center gap-2 bg-white dark:bg-[#1e1f22] p-2 pl-3 pr-4 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-gray-200 dark:border-gray-700 shadow-sm"
+                className="flex items-center gap-2.5 bg-white dark:bg-[#1e1f22] p-3 pl-4 pr-5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-gray-200 dark:border-gray-700 shadow-sm"
                 aria-label={suggestion.text}
             >
                 {suggestion.icon}
@@ -56,7 +56,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectSuggestion }) => 
         ))}
         <button
           onClick={() => onSelectSuggestion(moreSuggestion)}
-          className="bg-white dark:bg-[#1e1f22] p-2 px-4 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-gray-200 dark:border-gray-700 shadow-sm"
+          className="bg-white dark:bg-[#1e1f22] p-3 px-5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-gray-200 dark:border-gray-700 shadow-sm"
           aria-label={moreSuggestion.text}
         >
             <span className="font-medium text-gray-700 dark:text-gray-300">{moreSuggestion.text}</span>

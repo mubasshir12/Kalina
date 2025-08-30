@@ -65,7 +65,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
                         </button>
                     </div>
                 </div>
-                <pre className="p-4 text-sm overflow-x-auto">
+                <pre className="p-4 text-sm whitespace-pre-wrap break-words">
                     <code className={`font-mono language-${language}`}>
                         {code}
                     </code>
