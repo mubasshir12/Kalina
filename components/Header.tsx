@@ -1,7 +1,5 @@
-
-
 import React, { useState, useRef, useEffect } from 'react';
-import { Image as GalleryIcon, ChevronDown, BrainCircuit } from 'lucide-react';
+import { Image as GalleryIcon, ChevronDown, BrainCircuit, KeyRound } from 'lucide-react';
 import { ChatModel, ModelInfo } from '../types';
 
 interface HeaderProps {
@@ -11,9 +9,11 @@ interface HeaderProps {
     models: ModelInfo[];
     selectedChatModel: ChatModel;
     onSelectChatModel: (model: ChatModel) => void;
+    apiKey: string | null;
+    onOpenApiKeyModal: () => void;
 }
 
-const Header: React.FC<HeaderProps> = ({ onShowGallery, onShowMemory, isChatView, models, selectedChatModel, onSelectChatModel }) => {
+const Header: React.FC<HeaderProps> = ({ onShowGallery, onShowMemory, isChatView, models, selectedChatModel, onSelectChatModel, apiKey, onOpenApiKeyModal }) => {
   const [isModelSelectorOpen, setIsModelSelectorOpen] = useState(false);
   const modelSelectorRef = useRef<HTMLDivElement>(null);
 
@@ -30,6 +30,11 @@ const Header: React.FC<HeaderProps> = ({ onShowGallery, onShowMemory, isChatView
   }, []);
 
   const selectedModelObject = models.find(m => m.id === selectedChatModel) || models[0];
+
+  const maskApiKey = (key: string | null): string => {
+      if (!key || key.length < 8) return 'Not set';
+      return `${key.substring(0, 4)}...${key.substring(key.length - 4)}`;
+  };
 
   return (
     <header className="bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-b border-gray-200 dark:border-gray-700 p-4 sticky top-0 z-10">
@@ -63,6 +68,20 @@ const Header: React.FC<HeaderProps> = ({ onShowGallery, onShowMemory, isChatView
                                 <p className="text-xs text-gray-500 dark:text-gray-400">{model.description}</p>
                             </button>
                         ))}
+                        <div className="border-t border-gray-200 dark:border-gray-600 my-1" />
+                        <button
+                            onClick={() => {
+                                onOpenApiKeyModal();
+                                setIsModelSelectorOpen(false);
+                            }}
+                            className="w-full text-left p-3 text-gray-800 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/70 transition-colors flex items-center gap-2"
+                        >
+                            <KeyRound className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                            <div>
+                                <p className="font-semibold text-sm">Update API Key</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 font-mono">{maskApiKey(apiKey)}</p>
+                            </div>
+                        </button>
                     </div>
                 )}
             </div>

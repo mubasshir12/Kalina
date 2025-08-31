@@ -21,6 +21,7 @@ const models: ModelInfo[] = [
 
 const App: React.FC = () => {
     const [apiKey, setApiKey] = useState<string | null>(null);
+    const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
     const [selectedTool, setSelectedTool] = useState<Tool>('smart');
     const [selectedChatModel, setSelectedChatModel] = useState<ChatModel>('gemini-2.5-flash');
     const [isImageOptionsOpen, setIsImageOptionsOpen] = useState(false);
@@ -71,7 +72,10 @@ const App: React.FC = () => {
             } catch (e) {
                 console.error("Failed to initialize with stored API key:", e);
                 localStorage.removeItem('kalina_api_key');
+                setIsApiKeyModalOpen(true);
             }
+        } else {
+            setIsApiKeyModalOpen(true);
         }
     }, []);
 
@@ -100,7 +104,7 @@ const App: React.FC = () => {
 
     const handleSelectSuggestion = (suggestion: Suggestion) => {
         if (suggestion.prompt) {
-            handleSendMessage(suggestion.prompt);
+            handleSendMessageWrapper(suggestion.prompt);
         }
         setActiveSuggestion(null);
     };
@@ -110,14 +114,23 @@ const App: React.FC = () => {
             initializeAiClient(key);
             localStorage.setItem('kalina_api_key', key);
             setApiKey(key);
+            setIsApiKeyModalOpen(false);
         } catch (e) {
             console.error("Failed to set API key:", e);
         }
     };
 
-    if (!apiKey) {
-        return <ApiKeyModal onSetApiKey={handleSetApiKey} />;
-    }
+    const handleSendMessageWrapper = (prompt: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; }) => {
+        handleSendMessage(prompt, image, file);
+        setTimeout(() => {
+            if (scrollContainerRef.current) {
+                scrollContainerRef.current.scrollTo({
+                    top: scrollContainerRef.current.scrollHeight,
+                    behavior: 'smooth',
+                });
+            }
+        }, 100);
+    };
 
     return (
         <div className="flex flex-col h-[100dvh] bg-gray-50 dark:bg-[#131314] text-gray-900 dark:text-white transition-colors duration-300">
@@ -128,6 +141,8 @@ const App: React.FC = () => {
                 models={models}
                 selectedChatModel={selectedChatModel}
                 onSelectChatModel={setSelectedChatModel}
+                apiKey={apiKey}
+                onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
             />
 
             <ViewRenderer
@@ -154,9 +169,9 @@ const App: React.FC = () => {
                 <div className="p-4 md:p-6 bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700">
                     <div className="max-w-4xl mx-auto">
                         {selectedTool === 'translator' && <Translator />}
-                        {selectedTool === 'imageGeneration' && <ImagePromptSuggestions onSelectPrompt={(p) => handleSendMessage(p)} />}
+                        {selectedTool === 'imageGeneration' && <ImagePromptSuggestions onSelectPrompt={(p) => handleSendMessageWrapper(p)} />}
                         <ChatInput
-                            onSendMessage={handleSendMessage}
+                            onSendMessage={handleSendMessageWrapper}
                             isLoading={chatHandler.isLoading}
                             selectedTool={selectedTool}
                             onToolChange={setSelectedTool}
@@ -168,6 +183,13 @@ const App: React.FC = () => {
                     </div>
                 </div>
             )}
+
+            <ApiKeyModal
+                isOpen={isApiKeyModalOpen}
+                onSetApiKey={handleSetApiKey}
+                onClose={() => { if (apiKey) setIsApiKeyModalOpen(false); }}
+                currentApiKey={apiKey}
+            />
 
             <ImageOptionsModal
                 isOpen={isImageOptionsOpen}
