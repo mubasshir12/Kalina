@@ -13,7 +13,6 @@ const PreviewContent: React.FC<{ message: ChatMessageType }> = ({ message }) => 
     if (message.image) {
         return (
             <img
-                // FIX: Property 'mimeType' does not exist on type 'ChatMessage'. It should be message.image.mimeType
                 src={`data:${message.image.mimeType};base64,${message.image.base64}`}
                 alt="Image preview"
                 className="w-full h-full object-cover"
@@ -61,7 +60,6 @@ const HorizontalNavigator: React.FC<HorizontalNavigatorProps> = ({
                 return (
                     <button
                         key={index}
-                        // FIX: The ref callback should not return a value. Wrapped in braces to fix.
                         ref={el => { itemRefs.current.set(index, el); }}
                         onClick={() => onItemClick(index)}
                         className={`

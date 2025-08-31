@@ -1,23 +1,34 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GroundingChunk } from '../types';
 import { Copy, Check, Play } from 'lucide-react';
 import CodePreviewModal from './CodePreviewModal';
 
-// NEW COMPONENT: CodeBlock
 interface CodeBlockProps {
     language: string;
     code: string;
+    onPersistUpdate: (oldCode: string, newCode: string) => void;
 }
 
-const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
+const CodeBlock: React.FC<CodeBlockProps> = ({ language, code: initialCode, onPersistUpdate }) => {
     const [isCopied, setIsCopied] = useState(false);
     const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-    const isRunnable = ['html', 'htmlbars'].includes(language.toLowerCase());
+    const [currentCode, setCurrentCode] = useState(initialCode);
+
+    useEffect(() => {
+        // If the parent's code changes (e.g., from a re-render), update the local state.
+        setCurrentCode(initialCode);
+    }, [initialCode]);
+
+    const handleCodeFixed = (newCode: string) => {
+        setCurrentCode(newCode);
+        onPersistUpdate(initialCode, newCode);
+    };
+
+    const isRunnable = ['html', 'htmlbars', 'javascript', 'css'].includes(language.toLowerCase());
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(code);
+            await navigator.clipboard.writeText(currentCode);
             setIsCopied(true);
             setTimeout(() => setIsCopied(false), 2000);
         } catch (err) {
@@ -28,7 +39,12 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
     return (
         <>
             {isRunnable && isPreviewOpen && (
-                <CodePreviewModal htmlContent={code} onClose={() => setIsPreviewOpen(false)} />
+                <CodePreviewModal 
+                    initialCode={currentCode}
+                    language={language}
+                    onClose={() => setIsPreviewOpen(false)}
+                    onCodeFixed={handleCodeFixed}
+                />
             )}
             <div className="bg-gray-100 dark:bg-[#1e1f22] rounded-lg my-4 border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="flex justify-between items-center px-4 py-2 bg-gray-200 dark:bg-gray-800/50">
@@ -65,16 +81,15 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language, code }) => {
                         </button>
                     </div>
                 </div>
-                <pre className="p-4 text-sm whitespace-pre-wrap break-words">
+                <pre className="p-4 text-sm whitespace-pre overflow-x-auto code-scrollbar">
                     <code className={`font-mono language-${language}`}>
-                        {code}
+                        {currentCode}
                     </code>
                 </pre>
             </div>
         </>
     );
 };
-
 
 // Renders a single source citation as a clickable text-based tag.
 const Citation: React.FC<{ source: GroundingChunk; index: number }> = ({ source, index }) => {
@@ -151,7 +166,13 @@ const parseInline = (text: string, sources?: GroundingChunk[]): React.ReactNode 
     });
 };
 
-const MarkdownRenderer: React.FC<{ content: string; sources?: GroundingChunk[] }> = ({ content, sources }) => {
+interface MarkdownRendererProps {
+    content: string;
+    sources?: GroundingChunk[];
+    onContentUpdate: (newContent: string) => void;
+}
+
+const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, sources, onContentUpdate }) => {
     const lines = content.split('\n');
     const elements: React.ReactNode[] = [];
     let currentList: { type: 'ul' | 'ol'; items: React.ReactNode[] } | null = null;
@@ -177,12 +198,27 @@ const MarkdownRenderer: React.FC<{ content: string; sources?: GroundingChunk[] }
         }
     };
 
+    const handlePersistCodeUpdate = (oldCode: string, newCode: string, language: string) => {
+        const oldCodeBlock = `\`\`\`${language}\n${oldCode}\n\`\`\``;
+        const newCodeBlock = `\`\`\`${language}\n${newCode}\n\`\`\``;
+        // A simple replace is generally safe as the same code block is unlikely to appear twice in one message.
+        // For more complex scenarios, a more robust replacement strategy would be needed.
+        onContentUpdate(content.replace(oldCodeBlock, newCodeBlock));
+    };
+
     lines.forEach((line, index) => {
         // Code blocks
         if (line.trim().startsWith('```')) {
             flushList(`list-before-code-${index}`);
             if (inCodeBlock) {
-                elements.push(<CodeBlock key={`code-${index}`} language={codeBlockLanguage} code={codeBlockContent.join('\n')} />);
+                const code = codeBlockContent.join('\n');
+                const lang = codeBlockLanguage;
+                elements.push(<CodeBlock 
+                    key={`code-${index}`} 
+                    language={lang} 
+                    code={code}
+                    onPersistUpdate={(old, newC) => handlePersistCodeUpdate(old, newC, lang)}
+                />);
                 inCodeBlock = false;
                 codeBlockContent = [];
                 codeBlockLanguage = '';
@@ -258,7 +294,14 @@ const MarkdownRenderer: React.FC<{ content: string; sources?: GroundingChunk[] }
     flushList('list-at-end');
 
     if (inCodeBlock) {
-        elements.push(<CodeBlock key="code-at-end" language={codeBlockLanguage} code={codeBlockContent.join('\n')} />);
+        const code = codeBlockContent.join('\n');
+        const lang = codeBlockLanguage;
+        elements.push(<CodeBlock 
+            key="code-at-end" 
+            language={lang} 
+            code={code}
+            onPersistUpdate={(old, newC) => handlePersistCodeUpdate(old, newC, lang)}
+        />);
     }
 
     return <>{elements}</>;

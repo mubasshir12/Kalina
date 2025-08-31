@@ -1,4 +1,3 @@
-
 import { Modality, Type } from "@google/genai";
 import { getAiClient } from "./aiClient";
 
@@ -49,7 +48,7 @@ export const generateImage = async (prompt: string, numberOfImages: number, aspe
     const ai = getAiClient();
     try {
         const response = await ai.models.generateImages({
-            model: 'imagen-3.0-generate-002',
+            model: 'imagen-4.0-generate-001',
             prompt: prompt,
             config: {
               numberOfImages: numberOfImages,

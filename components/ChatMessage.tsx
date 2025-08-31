@@ -6,6 +6,7 @@ import { LoaderCircle, X, Copy, Check, RefreshCw, Pencil, Volume2, StopCircle, T
 import ImageModal from './ImageModal';
 import GeneratedImage from './GeneratedImage';
 import ConfirmationModal from './ConfirmationModal';
+import WebSearchAnimation from './WebSearchAnimation';
 
 const stripMarkdown = (markdown: string): string => {
   if (!markdown) return '';
@@ -26,8 +27,10 @@ interface ChatMessageProps extends ChatMessageType {
   onRetry?: () => void;
   index: number;
   onEditMessage?: (index: number, newContent: string) => void;
+  onUpdateMessageContent: (messageId: string, newContent: string) => void;
   isSpeaking?: boolean;
   onToggleAudio?: (id: string, text: string) => void;
+  onCancelStream?: () => void;
 }
 
 const FileIcon: React.FC<{ mimeType: string }> = ({ mimeType }) => {
@@ -63,13 +66,6 @@ const SkeletonLoader: React.FC = () => (
                 }
             }
         `}</style>
-    </div>
-);
-
-const WebSearchIndicator: React.FC = () => (
-    <div className="flex items-center space-x-2 py-2">
-        <LoaderCircle className="h-5 w-5 text-blue-500 dark:text-blue-400 animate-spin" />
-        <span className="text-gray-500 dark:text-gray-400">Searching the web...</span>
     </div>
 );
 
@@ -137,10 +133,13 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     onRetry,
     index,
     onEditMessage,
+    onUpdateMessageContent,
     isSpeaking,
     onToggleAudio,
+    onCancelStream,
     inputTokens,
     outputTokens,
+    generationTime,
 }) => {
   const [modalImage, setModalImage] = useState<string | null>(null);
   const [imageToDownload, setImageToDownload] = useState<string | null>(null);
@@ -326,7 +325,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
           {!isPlanning && isGeneratingImage && <ImageGenerationLoader count={imageGenerationCount || 1} aspectRatio={aspectRatio} isEditing={isEditingImage} />}
           
           {!isPlanning && !showThinkingProcess && !isGeneratingImage && isStreaming && !content && (!generatedImagesBase64 || generatedImagesBase64.length === 0) && (
-            isSearchingWeb ? <WebSearchIndicator /> : <SkeletonLoader />
+            isSearchingWeb ? <WebSearchAnimation /> : <SkeletonLoader />
           )}
 
           {(content || (generatedImagesBase64 && generatedImagesBase64.length > 0)) && (
@@ -345,75 +344,92 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
                 </div>
               )}
 
-              {content ? <MarkdownRenderer content={content} sources={sources} /> : null}
+              {content ? <MarkdownRenderer content={content} sources={sources} onContentUpdate={(newContent) => onUpdateMessageContent(id, newContent)} /> : null}
               
-              {!isStreaming && (content || (generatedImagesBase64 && generatedImagesBase64.length > 0)) && (
-                  <>
-                      <div className="mt-3 flex items-center gap-2 text-gray-500 dark:text-gray-400">
-                        {content && (
-                          <>
-                           <button onClick={handleCopy} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors" aria-label="Copy message">
-                            {isCopied ? (
-                              <Check className="h-5 w-5 text-green-500 dark:text-green-400" />
-                            ) : (
-                              <Copy className="h-5 w-5" />
-                            )}
-                          </button>
-                           <button 
-                            onClick={() => onToggleAudio?.(id, stripMarkdown(content))} 
-                            className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
-                            aria-label={isSpeaking ? "Stop reading aloud" : "Read message aloud"}
-                          >
-                              {isSpeaking ? (
-                                  <StopCircle className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
-                              ) : (
-                                  <Volume2 className="h-5 w-5" />
-                              )}
-                          </button>
-                          </>
-                        )}
-                        {onRetry && (
-                           <button onClick={onRetry} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors" aria-label="Retry">
-                              <RefreshCw className="h-5 w-5" />
-                           </button>
-                        )}
-                        {content && (
-                          <>
-                            <button 
-                              onClick={() => setFeedback(feedback === 'up' ? null : 'up')}
-                              className={`p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors ${feedback === 'up' ? 'text-indigo-500 dark:text-indigo-400' : ''}`}
-                              aria-label="Thumbs up"
-                            >
-                              <ThumbsUp className="h-5 w-5" />
-                            </button>
-                            <button 
-                              onClick={() => setFeedback(feedback === 'down' ? null : 'down')}
-                              className={`p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors ${feedback === 'down' ? 'text-indigo-500 dark:text-indigo-400' : ''}`}
-                              aria-label="Thumbs down"
-                            >
-                              <ThumbsDown className="h-5 w-5" />
-                            </button>
-                          </>
-                        )}
-                      </div>
-                      {(typeof inputTokens === 'number' || typeof outputTokens === 'number') && (
-                        <div className="mt-2 text-xs text-gray-400 dark:text-gray-500 font-mono">
-                            {typeof inputTokens === 'number' && typeof outputTokens === 'number'
-                                ? `Input: ${inputTokens} tokens / Output: ${outputTokens} tokens`
-                                : typeof outputTokens === 'number'
-                                    ? `Total: ${outputTokens} tokens`
-                                    : typeof inputTokens === 'number'
-                                        ? `Input: ${inputTokens} tokens`
-                                        : ''
-                            }
-                        </div>
-                      )}
-                  </>
-              )}
-
               {isStreaming && content ? <span className="inline-block w-2 h-4 bg-gray-800 dark:bg-white animate-pulse ml-1" /> : null}
             </div>
           )}
+
+            {!isStreaming && (content || (generatedImagesBase64 && generatedImagesBase64.length > 0)) && (
+                <>
+                    <div className="mt-3 flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                      {content && (
+                        <>
+                         <button onClick={handleCopy} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors" aria-label="Copy message">
+                          {isCopied ? (
+                            <Check className="h-5 w-5 text-green-500 dark:text-green-400" />
+                          ) : (
+                            <Copy className="h-5 w-5" />
+                          )}
+                        </button>
+                         <button 
+                          onClick={() => onToggleAudio?.(id, stripMarkdown(content))} 
+                          className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors"
+                          aria-label={isSpeaking ? "Stop reading aloud" : "Read message aloud"}
+                        >
+                            {isSpeaking ? (
+                                <StopCircle className="h-5 w-5 text-indigo-500 dark:text-indigo-400" />
+                            ) : (
+                                <Volume2 className="h-5 w-5" />
+                            )}
+                        </button>
+                        </>
+                      )}
+                      {onRetry && (
+                         <button onClick={onRetry} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors" aria-label="Retry">
+                            <RefreshCw className="h-5 w-5" />
+                         </button>
+                      )}
+                      {content && (
+                        <>
+                          <button 
+                            onClick={() => {
+                                const newFeedback = feedback === 'up' ? null : 'up';
+                                setFeedback(newFeedback);
+                                if (newFeedback === 'up') {
+                                    console.log('Feedback: Thumbs Up', { messageId: id, content: stripMarkdown(content) });
+                                }
+                            }}
+                            className={`p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors ${feedback === 'up' ? 'text-indigo-500 dark:text-indigo-400' : ''}`}
+                            aria-label="Thumbs up"
+                          >
+                            <ThumbsUp className="h-5 w-5" />
+                          </button>
+                          <button 
+                            onClick={() => {
+                                const newFeedback = feedback === 'down' ? null : 'down';
+                                setFeedback(newFeedback);
+                                if (newFeedback === 'down') {
+                                    console.log('Feedback: Thumbs Down', { messageId: id, content: stripMarkdown(content) });
+                                }
+                            }}
+                            className={`p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-full transition-colors ${feedback === 'down' ? 'text-indigo-500 dark:text-indigo-400' : ''}`}
+                            aria-label="Thumbs down"
+                          >
+                            <ThumbsDown className="h-5 w-5" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {(typeof inputTokens === 'number' || typeof outputTokens === 'number' || (generationTime && generationTime > 0)) && (
+                      <div className="mt-2 text-xs text-gray-400 dark:text-gray-500 font-mono flex items-center gap-x-4 gap-y-1 flex-wrap">
+                          {generationTime && generationTime > 0 && (
+                            <span>{`${(generationTime / 1000).toFixed(1)}s`}</span>
+                          )}
+                          
+                          {(() => {
+                              const tokenParts = [];
+                              if (typeof inputTokens === 'number') tokenParts.push(`${inputTokens} in`);
+                              if (typeof outputTokens === 'number') tokenParts.push(`${outputTokens} out`);
+                              if (tokenParts.length > 0) {
+                                  return <span>Tokens: {tokenParts.join(' / ')}</span>;
+                              }
+                              return null;
+                          })()}
+                      </div>
+                    )}
+                </>
+            )}
       </div>
     </>
   );

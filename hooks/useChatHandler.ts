@@ -59,10 +59,15 @@ export const useChatHandler = ({
     const [isThinking, setIsThinking] = useState<boolean>(false);
     const [isSearchingWeb, setIsSearchingWeb] = useState<boolean>(false);
     const [error, setError] = useState(null);
+    const [elapsedTime, setElapsedTime] = useState(0);
 
     const thinkingIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const thinkingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const thinkingTimeRef = useRef(0);
+    const isCancelledRef = useRef(false);
+    const responseTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const responseStartTimeRef = useRef(0);
+
 
     const clearThinkingIntervals = useCallback(() => {
         if (thinkingIntervalRef.current) clearInterval(thinkingIntervalRef.current);
@@ -71,6 +76,22 @@ export const useChatHandler = ({
         thinkingTimerRef.current = null;
         setIsThinking(false);
     }, []);
+    
+    const stopResponseTimer = useCallback(() => {
+        if (responseTimerRef.current) {
+            clearInterval(responseTimerRef.current);
+            responseTimerRef.current = null;
+        }
+        setElapsedTime(0);
+    }, []);
+
+    const handleCancelStream = useCallback(() => {
+        isCancelledRef.current = true;
+        clearThinkingIntervals();
+        stopResponseTimer();
+        setIsSearchingWeb(false);
+        setIsLoading(false);
+    }, [clearThinkingIntervals, stopResponseTimer]);
 
     const handleExecuteImageGeneration = useCallback(async (options: ImageGenerationOptions) => {
         if (!apiKey || !activeConversationId) return;
@@ -140,6 +161,14 @@ export const useChatHandler = ({
 
         setError(null);
         setIsLoading(true);
+        isCancelledRef.current = false;
+        
+        responseStartTimeRef.current = Date.now();
+        setElapsedTime(0);
+        responseTimerRef.current = setInterval(() => {
+            const elapsed = Date.now() - responseStartTimeRef.current;
+            setElapsedTime(elapsed);
+        }, 53);
 
         const newUserMessage: ChatMessageType = { id: crypto.randomUUID(), role: 'user', content: fullPrompt, image: image, file: file };
         const planningMessage: ChatMessageType = { id: crypto.randomUUID(), role: 'model', content: '', isPlanning: true };
@@ -253,6 +282,22 @@ export const useChatHandler = ({
             let thinkingCleared = false;
 
             for await (const chunk of stream) {
+                if (isCancelledRef.current) {
+                    updateConversationMessages(currentConversationId, prev => {
+                        const lastMessage = prev[prev.length - 1];
+                        if (lastMessage?.role === 'model') {
+                            const updatedMessages = [...prev.slice(0, -1)];
+                            updatedMessages.push({
+                                ...lastMessage,
+                                content: (lastMessage.content || '') + '\n\n*Response generation stopped.*'
+                            });
+                            return updatedMessages;
+                        }
+                        return prev;
+                    });
+                    break;
+                }
+                
                 if (!thinkingCleared && chunk.text) {
                     if (isThinking) {
                         clearThinkingIntervals();
@@ -305,7 +350,7 @@ export const useChatHandler = ({
 
             const finalCleanedResponse = finalModelResponse.replace(/^\s*TITLE:\s*[^\n]*\n?/, '');
             const finalConversationState = conversations.find(c => c.id === currentConversationId);
-            if (finalConversationState) {
+            if (finalConversationState && !isCancelledRef.current) {
                 if (finalConversationState.messages.length > 1 && finalConversationState.messages.length % 6 === 0) {
                     summarizeConversation(transformMessagesToHistory(finalConversationState.messages.slice(-6)), finalConversationState.summary)
                         .then(newSummary => updateConversation(currentConversationId, c => ({...c, summary: newSummary })));
@@ -350,16 +395,33 @@ export const useChatHandler = ({
                 return newMessages;
             });
         } finally {
+            const finalElapsedTime = Date.now() - responseStartTimeRef.current;
+            stopResponseTimer();
+            
+            if (currentConversationId && !isCancelledRef.current) {
+                updateConversationMessages(currentConversationId, prev => {
+                    const lastMessage = prev[prev.length - 1];
+                    if (lastMessage && lastMessage.role === 'model') {
+                        const isError = lastMessage.content?.startsWith("Sorry, I encountered an error:");
+                        if (!isError) {
+                            return [...prev.slice(0, -1), { ...lastMessage, generationTime: finalElapsedTime }];
+                        }
+                    }
+                    return prev;
+                });
+            }
+
             setIsLoading(false);
             clearThinkingIntervals();
             setIsSearchingWeb(false);
             setActiveSuggestion(null);
+            isCancelledRef.current = false;
         }
     }, [
         apiKey, isLoading, activeConversationId, conversations, selectedChatModel, selectedTool, ltm, codeMemory,
         setConversations, setActiveConversationId, setError, setIsLoading, updateConversationMessages, 
         updateConversation, setAllGeneratedImages, setImageGenerationPrompt, setIsImageOptionsOpen, 
-        setIsThinking, setIsSearchingWeb, setCodeMemory, setLtm, setActiveSuggestion, clearThinkingIntervals
+        setIsThinking, setIsSearchingWeb, setCodeMemory, setLtm, setActiveSuggestion, clearThinkingIntervals, stopResponseTimer
     ]);
 
     const handleRetry = useCallback(() => {
@@ -387,11 +449,21 @@ export const useChatHandler = ({
         handleSendMessage(newContent, messageToEdit.image, messageToEdit.file);
     };
 
+    const handleUpdateMessageContent = (messageId: string, newContent: string) => {
+        if (!activeConversationId) return;
+        updateConversationMessages(activeConversationId, prev => 
+            prev.map(msg => 
+                msg.id === messageId ? { ...msg, content: newContent } : msg
+            )
+        );
+    };
+
     return {
         isLoading,
         isThinking,
         isSearchingWeb,
         error,
+        elapsedTime,
         setError,
         setIsLoading,
         setIsThinking,
@@ -401,5 +473,7 @@ export const useChatHandler = ({
         handleExecuteImageGeneration,
         handleRetry,
         handleEditMessage,
+        handleUpdateMessageContent,
+        handleCancelStream,
     };
 };

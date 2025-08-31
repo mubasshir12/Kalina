@@ -6,12 +6,14 @@ import ImageModal from './ImageModal';
 interface ChatInputProps {
   onSendMessage: (message: string, image?: { base64: string; mimeType: string; }, file?: { base64: string; mimeType: string; name: string; }) => void;
   isLoading: boolean;
+  elapsedTime: number;
   selectedTool: Tool;
   onToolChange: (tool: Tool) => void;
   activeSuggestion: Suggestion | null;
   onClearSuggestion: () => void;
   onOpenHistory: () => void;
   conversationCount: number;
+  onCancelStream: () => void;
 }
 
 const tools: { id: Tool; name: string; description: string; icon: React.ElementType }[] = [
@@ -44,12 +46,14 @@ const FileIcon: React.FC<{ mimeType: string; className?: string; }> = ({ mimeTyp
 const ChatInput: React.FC<ChatInputProps> = ({ 
     onSendMessage, 
     isLoading,
+    elapsedTime,
     selectedTool,
     onToolChange,
     activeSuggestion,
     onClearSuggestion,
     onOpenHistory,
-    conversationCount
+    conversationCount,
+    onCancelStream
 }) => {
   const [input, setInput] = useState('');
   const [image, setImage] = useState<{ base64: string; mimeType: string; } | null>(null);
@@ -67,6 +71,11 @@ const ChatInput: React.FC<ChatInputProps> = ({
   
   const [animatedDescription, setAnimatedDescription] = useState(descriptionsToAnimate[0]);
   const [isFading, setIsFading] = useState(false);
+  
+  const formatTime = (ms: number) => {
+    if (!ms || ms < 0) return '0.0s';
+    return `${(ms / 1000).toFixed(1)}s`;
+  };
 
   useEffect(() => {
     if (textareaRef.current) {
@@ -153,9 +162,15 @@ const ChatInput: React.FC<ChatInputProps> = ({
   };
 
   const handleKeyPress = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    // On desktop, Enter sends the message. On mobile, it creates a new line.
+    // The send button must be used to send on mobile.
+    const isMobile = window.matchMedia("(max-width: 768px)").matches;
+
     if (event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault();
-        handleSend();
+        if (!isMobile) {
+            event.preventDefault();
+            handleSend();
+        }
     }
   };
 
@@ -281,9 +296,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
           </div>
           
           {activeSuggestion && (
-            <div className="mb-2 p-2 pl-3 bg-indigo-50 dark:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-800 rounded-xl flex items-center gap-2 text-sm">
+            <div className="mb-2 p-2 pl-3 bg-indigo-50 dark:bg-indigo-900/40 border border-indigo-200 dark:border-indigo-800 rounded-xl flex self-start items-center gap-2 text-sm">
               {activeSuggestion.icon}
-              <span className="text-indigo-800 dark:text-indigo-200 line-clamp-1 flex-1 font-medium">
+              <span className="text-indigo-800 dark:text-indigo-200 line-clamp-1 font-medium">
                   {activeSuggestion.text}
               </span>
               <button
@@ -386,12 +401,35 @@ const ChatInput: React.FC<ChatInputProps> = ({
                       className="w-full bg-gray-100 dark:bg-[#1e1f22] border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 rounded-2xl py-2.5 pl-5 pr-14 min-h-[3.5rem] focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-300 disabled:opacity-50 resize-none max-h-[8rem] overflow-y-auto scrollbar-hide"
                   />
                   <button
-                      onClick={handleSend}
-                      disabled={isLoading || (!input.trim() && !image && !file)}
-                      className="absolute right-2 bottom-3 p-2 rounded-full bg-indigo-600 text-white hover:bg-indigo-500 disabled:bg-gray-400 dark:disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors"
-                      aria-label="Send message"
+                      onClick={isLoading ? onCancelStream : handleSend}
+                      disabled={!isLoading && (!input.trim() && !image && !file)}
+                      className={`absolute right-2 bottom-2 flex items-center justify-center transition-all duration-300 ${
+                          isLoading 
+                              ? 'bg-red-600 hover:bg-red-500 h-10 rounded-full' 
+                              : 'bg-indigo-600 hover:bg-indigo-500 text-white disabled:bg-gray-400 dark:disabled:bg-gray-500 disabled:cursor-not-allowed w-10 h-10 rounded-full'
+                      }`}
+                      aria-label={isLoading ? `Stop generating (${formatTime(elapsedTime)})` : "Send message"}
                   >
-                      <ArrowUp className="h-6 w-6" />
+                      {isLoading ? (
+                        <div className="flex items-center justify-center gap-2 px-3 text-white w-full">
+                            <div className="relative w-6 h-6">
+                                <div 
+                                    className="w-full h-full animate-spin"
+                                    style={{
+                                        borderRadius: '50%',
+                                        border: '2px solid white',
+                                        borderTopColor: 'transparent',
+                                    }}
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                    <div className="w-2.5 h-2.5 bg-white" />
+                                </div>
+                            </div>
+                            <span className="text-sm font-mono font-semibold">{formatTime(elapsedTime)}</span>
+                        </div>
+                      ) : (
+                        <ArrowUp className="h-6 w-6" />
+                      )}
                   </button>
               </div>
           </div>

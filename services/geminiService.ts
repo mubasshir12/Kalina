@@ -1,3 +1,4 @@
+
 import { Part, Type } from "@google/genai";
 import { getAiClient } from "./aiClient";
 
@@ -38,13 +39,13 @@ Based on the prompt (and image/file, if present), you must respond ONLY with a v
     "isImageEditRequest": { "type": "boolean", "description": "True ONLY if an image IS provided AND the user explicitly asks to modify, add to, or change it." },
     "thoughts": {
       "type": "array",
-      "description": "If 'needsThinking' is true, provide a thorough, step-by-step thought process. The number of steps should be appropriate for the complexity of the prompt. The steps must describe your internal reasoning and plan (e.g., 'Step 1: Identify user's core question. Step 2: Search web for recent data.'). They must NOT be conversational text intended for the user. For each step, provide TWO versions: a 'concise_step' (3-5 words, for a loading animation) and a 'step' (a full, detailed sentence describing the action). Omit or leave empty if not needed.",
+      "description": "If 'needsThinking' is true, provide a thorough, step-by-step thought process. The steps must describe your internal reasoning and plan. For each step, provide TWO versions: a 'concise_step' (3-5 words for a loading animation) and a 'step' (a full sentence). The steps must NOT be conversational. CRITICAL: The final 'concise_step' in the array MUST be dynamic, based on the user's prompt, and end in '-ing' to describe the final action (e.g., 'Generating response...', 'Finalizing plan...', 'Writing code...'). Omit or leave empty if not needed.",
       "items": {
         "type": "object",
         "properties": {
-          "phase": { "type": "string", "description": "The phase of the process (e.g., 'Analysis', 'Planning')." },
+          "phase": { "type": "string", "description": "The phase of the process (e.g., 'Analysis', 'Planning', 'Finalizing')." },
           "step": { "type": "string", "description": "The detailed description of the thought process step." },
-          "concise_step": { "type": "string", "description": "A very short summary (3-5 words) of the step for display in an animation." }
+          "concise_step": { "type": "string", "description": "A very short summary (3-5 words) of the step for display in an animation. The final concise_step must end with '-ing'." }
         },
         "required": ["phase", "step", "concise_step"]
       }
@@ -111,21 +112,26 @@ export const planResponse = async (prompt: string, image?: { base64: string; mim
         });
         const jsonText = response.text.trim();
         const result = JSON.parse(jsonText);
+
+        // If web search is needed, disable thinking to go straight to search.
+        if (result.needsWebSearch) {
+            result.needsThinking = false;
+            result.thoughts = [];
+        }
+
         return { ...result, thoughts: result.thoughts || [] };
     } catch (error)
     {
         console.error("Error planning response:", error);
+        // Fallback: If planning fails, assume web search is needed but disable thinking.
+        const needsWebSearch = true;
         return { 
-            needsWebSearch: true,
-            needsThinking: true, 
+            needsWebSearch: needsWebSearch,
+            needsThinking: !needsWebSearch, // Ensures thinking is false if web search is true
             needsCodeContext: true,
             isImageGenerationRequest: !image && (prompt.toLowerCase().includes('generate') || prompt.toLowerCase().includes('create')),
             isImageEditRequest: !!image,
-            thoughts: [
-                { phase: "Initial Analysis", step: "Deconstructing the user's request to understand the core intent.", concise_step: "Analyzing request..." },
-                { phase: "Strategy", step: "Formulating a multi-step response plan to address all parts of the query.", concise_step: "Planning response..." },
-                { phase: "Execution", step: "Gathering and synthesizing information to construct the final answer.", concise_step: "Synthesizing info..." }
-            ] 
+            thoughts: [] // No thoughts when thinking is disabled
         };
     }
 };

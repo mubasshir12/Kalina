@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 
 export type ChatModel = 'gemini-2.5-flash' | 'gemini-2.5-pro';
@@ -54,6 +52,7 @@ export interface ChatMessage {
   memoryUpdated?: boolean;
   inputTokens?: number;
   outputTokens?: number;
+  generationTime?: number;
 }
 
 export interface AppError {
@@ -83,4 +82,10 @@ export interface CodeSnippet {
   description: string;
   language: string;
   code: string;
+}
+
+export interface ConsoleLog {
+  level: 'log' | 'warn' | 'error';
+  message: string;
+  timestamp: string;
 }

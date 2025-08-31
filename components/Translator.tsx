@@ -136,8 +136,28 @@ const Translator: React.FC = () => {
                 </div>
                 <div className="relative h-28 p-3 bg-white dark:bg-[#2E2F33] rounded-lg border border-gray-300 dark:border-gray-600 overflow-y-auto">
                     {isLoading ? (
-                        <div className="flex items-center justify-center h-full">
-                            <LoaderCircle className="h-6 w-6 text-indigo-500 animate-spin" />
+                        <div className="space-y-3 py-2">
+                            <div className="h-4 blue-shimmer-bg rounded w-5/6"></div>
+                            <div className="h-4 blue-shimmer-bg rounded w-full"></div>
+                            <div className="h-4 blue-shimmer-bg rounded w-4/6"></div>
+                            <style>{`
+                                .blue-shimmer-bg {
+                                    background-color: #e5e7eb; /* gray-200 */
+                                    background-image: linear-gradient(110deg, #e5e7eb 8%, #dbeafe 18%, #e5e7eb 33%); /* gray-200, blue-200, gray-200 */
+                                    background-size: 200% 100%;
+                                    animation: blue-shimmer 1.5s linear infinite;
+                                }
+                                .dark .blue-shimmer-bg {
+                                    background-color: #374151; /* gray-700 */
+                                    background-image: linear-gradient(110deg, #374151 8%, #1e40af 18%, #374151 33%); /* gray-700, blue-800, gray-700 */
+                                    background-size: 200% 100%;
+                                }
+                                @keyframes blue-shimmer {
+                                    to {
+                                        background-position-x: -200%;
+                                    }
+                                }
+                            `}</style>
                         </div>
                     ) : (
                         <p className={`whitespace-pre-wrap ${!outputText ? 'text-gray-400 dark:text-gray-500' : ''}`}>

@@ -19,6 +19,21 @@
           -ms-overflow-style: none;  /* IE and Edge */
           scrollbar-width: none;  /* Firefox */
       }
+      .code-scrollbar::-webkit-scrollbar {
+        height: 8px;
+      }
+      .code-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .code-scrollbar::-webkit-scrollbar-thumb {
+        background-color: rgba(156, 163, 175, 0.5); /* gray-400 with opacity */
+        border-radius: 4px;
+        border: 2px solid transparent;
+        background-clip: content-box;
+      }
+      .dark .code-scrollbar::-webkit-scrollbar-thumb {
+        background-color: rgba(107, 114, 128, 0.5); /* gray-500 with opacity */
+      }
     </style>
     <script>
       // On page load or when changing themes, best to add inline in `head` to avoid FOUC

@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Suggestion, Tool, ChatModel, ModelInfo } from './types';
 import { initializeAiClient } from './services/aiClient';
@@ -13,6 +14,8 @@ import { useConversations } from './hooks/useConversations';
 import { useMemory } from './hooks/useMemory';
 import { useAudio } from './hooks/useAudio';
 import { useChatHandler } from './hooks/useChatHandler';
+import ConfirmationModal from './components/ConfirmationModal';
+import { X } from 'lucide-react';
 
 const models: ModelInfo[] = [
     { id: 'gemini-2.5-flash', name: 'Kalina 2.5 Flash', description: 'Optimized for speed and efficiency.' },
@@ -30,6 +33,7 @@ const App: React.FC = () => {
     const [allGeneratedImages, setAllGeneratedImages] = useState<string[]>([]);
     const [currentView, setCurrentView] = useState<'chat' | 'gallery' | 'memory'>('chat');
     const [isHistorySheetOpen, setIsHistorySheetOpen] = useState(false);
+    const [isStopConfirmOpen, setIsStopConfirmOpen] = useState(false);
     
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
@@ -59,7 +63,7 @@ const App: React.FC = () => {
     });
 
     const { activeConversation, sortedConversations, handleNewChat, handleSelectConversation } = conversationManager;
-    const { handleSendMessage, handleRetry, handleEditMessage } = chatHandler;
+    const { handleSendMessage, handleRetry, handleEditMessage, handleUpdateMessageContent, handleCancelStream, elapsedTime } = chatHandler;
 
     const showWelcomeScreen = !activeConversation || activeConversation.messages.length === 0;
 
@@ -104,9 +108,8 @@ const App: React.FC = () => {
 
     const handleSelectSuggestion = (suggestion: Suggestion) => {
         if (suggestion.prompt) {
-            handleSendMessageWrapper(suggestion.prompt);
+            setActiveSuggestion(suggestion);
         }
-        setActiveSuggestion(null);
     };
 
     const handleSetApiKey = (key: string) => {
@@ -130,6 +133,11 @@ const App: React.FC = () => {
                 });
             }
         }, 100);
+    };
+    
+    const onConfirmCancelStream = () => {
+        handleCancelStream();
+        setIsStopConfirmOpen(false);
     };
 
     return (
@@ -157,8 +165,10 @@ const App: React.FC = () => {
                 ltm={ltm}
                 handleRetry={handleRetry}
                 handleEditMessage={handleEditMessage}
+                handleUpdateMessageContent={handleUpdateMessageContent}
                 handleToggleAudio={handleToggleAudio}
                 handleSelectSuggestion={handleSelectSuggestion}
+                handleCancelStream={handleCancelStream}
                 setCurrentView={setCurrentView}
                 setAllGeneratedImages={setAllGeneratedImages}
                 setLtm={setLtm}
@@ -167,19 +177,35 @@ const App: React.FC = () => {
 
             {currentView === 'chat' && (
                 <div className="p-4 md:p-6 bg-white/80 dark:bg-gray-900/50 backdrop-blur-sm border-t border-gray-200 dark:border-gray-700">
-                    <div className="max-w-4xl mx-auto">
+                    <div className="max-w-4xl mx-auto relative">
+                        {(selectedTool === 'translator' || selectedTool === 'imageGeneration') && (
+                            <button
+                                onClick={() => setSelectedTool('smart')}
+                                className="absolute -top-2 -right-2 p-1.5 bg-red-600 text-white rounded-full hover:bg-red-500 transition-colors z-10 mb-4"
+                                aria-label="Close tool"
+                                title="Return to Smart Mode"
+                            >
+                                <X className="h-4 w-4" />
+                            </button>
+                        )}
+
                         {selectedTool === 'translator' && <Translator />}
                         {selectedTool === 'imageGeneration' && <ImagePromptSuggestions onSelectPrompt={(p) => handleSendMessageWrapper(p)} />}
-                        <ChatInput
-                            onSendMessage={handleSendMessageWrapper}
-                            isLoading={chatHandler.isLoading}
-                            selectedTool={selectedTool}
-                            onToolChange={setSelectedTool}
-                            activeSuggestion={activeSuggestion}
-                            onClearSuggestion={() => setActiveSuggestion(null)}
-                            onOpenHistory={() => setIsHistorySheetOpen(true)}
-                            conversationCount={conversationManager.conversations.length}
-                        />
+                        
+                        {selectedTool !== 'translator' && (
+                            <ChatInput
+                                onSendMessage={handleSendMessageWrapper}
+                                isLoading={chatHandler.isLoading}
+                                elapsedTime={elapsedTime}
+                                selectedTool={selectedTool}
+                                onToolChange={setSelectedTool}
+                                activeSuggestion={activeSuggestion}
+                                onClearSuggestion={() => setActiveSuggestion(null)}
+                                onOpenHistory={() => setIsHistorySheetOpen(true)}
+                                conversationCount={conversationManager.conversations.length}
+                                onCancelStream={() => setIsStopConfirmOpen(true)}
+                            />
+                        )}
                     </div>
                 </div>
             )}
@@ -207,6 +233,15 @@ const App: React.FC = () => {
                 onRenameConversation={conversationManager.handleRenameConversation}
                 onDeleteConversation={conversationManager.handleDeleteConversation}
                 onPinConversation={conversationManager.handlePinConversation}
+            />
+            <ConfirmationModal
+                isOpen={isStopConfirmOpen}
+                onClose={() => setIsStopConfirmOpen(false)}
+                onConfirm={onConfirmCancelStream}
+                title="Stop Generation"
+                message="Are you sure you want to stop generating the response?"
+                confirmButtonText="Stop"
+                confirmButtonVariant="danger"
             />
         </div>
     );

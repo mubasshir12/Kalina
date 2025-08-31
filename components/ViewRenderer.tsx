@@ -18,8 +18,10 @@ interface ViewRendererProps {
     ltm: LTM;
     handleRetry: () => void;
     handleEditMessage: (index: number, newContent: string) => void;
+    handleUpdateMessageContent: (messageId: string, newContent: string) => void;
     handleToggleAudio: (id: string, text: string) => void;
     handleSelectSuggestion: (suggestion: Suggestion) => void;
+    handleCancelStream: () => void;
     setCurrentView: (view: 'chat' | 'gallery' | 'memory') => void;
     setAllGeneratedImages: React.Dispatch<React.SetStateAction<string[]>>;
     setLtm: React.Dispatch<React.SetStateAction<LTM>>;
@@ -38,8 +40,10 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
     ltm,
     handleRetry,
     handleEditMessage,
+    handleUpdateMessageContent,
     handleToggleAudio,
     handleSelectSuggestion,
+    handleCancelStream,
     setCurrentView,
     setAllGeneratedImages,
     setLtm,
@@ -134,8 +138,10 @@ const ViewRenderer: React.FC<ViewRendererProps> = ({
                                             isSearchingWeb={isSearchingWeb}
                                             onRetry={handleRetry}
                                             onEditMessage={handleEditMessage}
+                                            onUpdateMessageContent={handleUpdateMessageContent}
                                             speakingMessageId={speakingMessageId}
                                             onToggleAudio={handleToggleAudio}
+                                            onCancelStream={handleCancelStream}
                                             scrollContainerRef={scrollContainerRef}
                                         />
                                     )
