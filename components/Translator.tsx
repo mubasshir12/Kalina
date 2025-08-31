@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowRightLeft, LoaderCircle, Copy, Check, X } from 'lucide-react';
-import { translateText } from '../services/geminiService';
+import { translateText } from '../services/translationService';
 
 const sourceLanguages = [
     { code: 'auto', name: 'Auto Detect' },

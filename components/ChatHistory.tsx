@@ -1,4 +1,5 @@
-import React, { useRef, useEffect } from 'react';
+
+import React, { useRef, useEffect, useState } from 'react';
 import { ChatMessage as ChatMessageType } from '../types';
 import ChatMessage from './ChatMessage';
 
@@ -11,18 +12,40 @@ interface ChatHistoryProps {
   onEditMessage: (index: number, newContent: string) => void;
   speakingMessageId: string | null;
   onToggleAudio: (id: string, text: string) => void;
+  scrollContainerRef: React.RefObject<HTMLDivElement>;
 }
 
-const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, isLoading, isThinking, isSearchingWeb, onRetry, onEditMessage, speakingMessageId, onToggleAudio }) => {
+const ChatHistory: React.FC<ChatHistoryProps> = ({ messages, isLoading, isThinking, isSearchingWeb, onRetry, onEditMessage, speakingMessageId, onToggleAudio, scrollContainerRef }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isLockedToBottom, setIsLockedToBottom] = useState(true);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  };
-
+  // Effect to auto-scroll when new messages stream in, if the user is already at the bottom.
   useEffect(() => {
-    scrollToBottom();
-  }, [messages, isLoading, isThinking, isSearchingWeb]);
+    if (isLockedToBottom) {
+      // Use "auto" for instant scrolling to prevent a jumpy experience during streaming.
+      messagesEndRef.current?.scrollIntoView({ behavior: "auto" });
+    }
+  }, [messages, isLoading, isThinking, isSearchingWeb]); // isLockedToBottom is intentionally omitted
+
+  // Effect to track user scrolling and determine if we should lock to the bottom.
+  useEffect(() => {
+    const scrollableElement = scrollContainerRef.current;
+    if (!scrollableElement) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = scrollableElement;
+      // A small threshold ensures that the user is truly at the bottom before locking.
+      const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+      setIsLockedToBottom(atBottom);
+    };
+
+    scrollableElement.addEventListener('scroll', handleScroll, { passive: true });
+
+    // Initial check
+    handleScroll();
+
+    return () => scrollableElement.removeEventListener('scroll', handleScroll);
+  }, [scrollContainerRef]);
 
   return (
     <div className="space-y-6">

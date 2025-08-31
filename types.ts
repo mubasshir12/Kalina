@@ -26,6 +26,7 @@ export interface GroundingChunk {
 export interface ThoughtStep {
   phase: string;
   step: string;
+  concise_step: string;
 }
 
 export interface ChatMessage {

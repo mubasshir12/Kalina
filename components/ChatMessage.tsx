@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { ChatMessage as ChatMessageType } from '../types';
 import MarkdownRenderer from './MarkdownRenderer';
@@ -25,7 +24,7 @@ interface ChatMessageProps extends ChatMessageType {
   isThinking?: boolean;
   isSearchingWeb?: boolean;
   onRetry?: () => void;
-  index?: number;
+  index: number;
   onEditMessage?: (index: number, newContent: string) => void;
   isSpeaking?: boolean;
   onToggleAudio?: (id: string, text: string) => void;
@@ -220,10 +219,12 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
       }
   };
   
+  const messageId = `message-${index}`;
+  
   if (isUser) {
     if (isEditing) {
         return (
-            <div className="flex justify-end">
+            <div id={messageId} className="flex justify-end">
                 <div className="w-full max-w-2xl p-4 rounded-2xl bg-indigo-500 text-white rounded-br-none">
                     <textarea
                         value={editedContent}
@@ -244,7 +245,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     return (
       <>
         {modalImage && <ImageModal imageUrl={modalImage} onClose={() => setModalImage(null)} />}
-        <div className="flex justify-end">
+        <div id={messageId} className="flex justify-end">
             <div 
                 className="flex flex-col items-end gap-2"
                 onMouseDown={handlePressStart}
@@ -309,7 +310,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
         message="Do you want to download this image?"
         confirmButtonText="Download"
       />
-      <div className="w-full">
+      <div id={messageId} className="w-full">
           {memoryUpdated && <MemoryUpdateNotification />}
 
           {isPlanning && <SkeletonLoader />}
