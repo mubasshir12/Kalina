@@ -48,19 +48,17 @@ const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ thoughts, duration, i
     if (isThinking && safeThoughts.length > 0) {
         const currentThought = safeThoughts[currentIndex];
         return (
-            <div>
+            <div className="bg-gray-100 dark:bg-gray-800/50 rounded-lg mb-4 border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300 transition-all duration-300">
                 <ThinkingAnimation />
-                <div className="bg-gray-100 dark:bg-gray-800/50 rounded-lg mb-4 border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300 transition-all duration-300 -mt-8 relative z-10">
-                    <div className="flex-grow overflow-hidden">
-                         <span
-                            key={currentIndex}
-                            className={`transition-opacity duration-300 inline-block ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}
-                        >
-                            {currentThought?.concise_step || 'Analyzing...'}
-                        </span>
-                    </div>
-                    <span className="ml-auto text-gray-500 dark:text-gray-400 flex-shrink-0">{(duration || 0).toFixed(1)}s</span>
+                <div className="flex-grow overflow-hidden">
+                     <span
+                        key={currentIndex}
+                        className={`transition-opacity duration-300 inline-block ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}
+                    >
+                        {currentThought?.concise_step || 'Analyzing...'}
+                    </span>
                 </div>
+                <span className="ml-auto text-gray-500 dark:text-gray-400 flex-shrink-0">{(duration || 0).toFixed(1)}s</span>
             </div>
         );
     }

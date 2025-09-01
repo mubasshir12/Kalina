@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { GroundingChunk } from '../types';
 import { Copy, Check, Play } from 'lucide-react';
@@ -122,9 +123,9 @@ const Citation: React.FC<{ source: GroundingChunk; index: number }> = ({ source,
 };
 
 
-// Parses inline markdown: **bold**, *italic*, citations [1], and links.
+// Parses inline markdown: **bold**, *italic*, `code`, citations [1], and links.
 const parseInline = (text: string, sources?: GroundingChunk[]): React.ReactNode => {
-    const regex = /(\*\*.*?\*\*|__.*?__|\*.*?\*|_.*?_|\[\d+\]|https?:\/\/\S+|www\.\S+)/g;
+    const regex = /(\*\*.*?\*\*|__.*?__|\*.*?\*|_.*?_|\`.+?\`|\[\d+\]|https?:\/\/\S+|www\.\S+)/g;
     const urlRegex = /^(https?:\/\/\S+|www\.\S+)$/;
 
     return text.split(regex).filter(Boolean).map((part, i) => {
@@ -145,6 +146,9 @@ const parseInline = (text: string, sources?: GroundingChunk[]): React.ReactNode 
         }
         if ((part.startsWith('*') && part.endsWith('*')) || (part.startsWith('_') && part.endsWith('_'))) {
             return <em key={i}>{part.slice(1, -1)}</em>;
+        }
+        if (part.startsWith('`') && part.endsWith('`')) {
+            return <code key={i} className="bg-gray-200 dark:bg-gray-700/60 text-gray-800 dark:text-gray-200 font-mono text-sm px-1.5 py-1 rounded-md mx-0.5">{part.slice(1, -1)}</code>;
         }
         
         if (urlRegex.test(part)) {
