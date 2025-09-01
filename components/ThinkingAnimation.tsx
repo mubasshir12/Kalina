@@ -1,10 +1,9 @@
 
-
 import React from 'react';
 
 const ThinkingAnimation: React.FC = () => {
     return (
-        <div className="flex flex-col items-center justify-center">
+        <div className="flex flex-col items-center justify-center pt-2 pb-4">
             <style>
                 {`
                 .thinking-animation-container {

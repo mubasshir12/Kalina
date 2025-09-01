@@ -13,64 +13,46 @@
         font-family: 'Inter', sans-serif;
       }
       .scrollbar-hide::-webkit-scrollbar {
-        display: none;
+          display: none;
       }
       .scrollbar-hide {
-        -ms-overflow-style: none;
-        scrollbar-width: none;
+          -ms-overflow-style: none;  /* IE and Edge */
+          scrollbar-width: none;  /* Firefox */
       }
       .code-scrollbar::-webkit-scrollbar {
         height: 8px;
-        width: 8px;
       }
       .code-scrollbar::-webkit-scrollbar-track {
-        background: #f1f5f9;
-      }
-      .dark .code-scrollbar::-webkit-scrollbar-track {
-        background: #1e293b;
+        background: transparent;
       }
       .code-scrollbar::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
+        background-color: rgba(156, 163, 175, 0.5); /* gray-400 with opacity */
         border-radius: 4px;
+        border: 2px solid transparent;
+        background-clip: content-box;
       }
       .dark .code-scrollbar::-webkit-scrollbar-thumb {
-        background: #475569;
+        background-color: rgba(107, 114, 128, 0.5); /* gray-500 with opacity */
       }
-      .code-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: #94a3b8;
-      }
-      .dark .code-scrollbar::-webkit-scrollbar-thumb:hover {
-        background: #64748b;
-      }
-
-      /* Syntax Highlighting - Light Theme */
-      .token-comment { color: #64748b; font-style: italic; } /* slate-500 */
-      .token-string { color: #16a34a; } /* green-600 */
-      .token-keyword { color: #7c3aed; } /* violet-600 */
-      .token-class-name { color: #c026d3; } /* fuchsia-600 */
-      .token-function { color: #2563eb; } /* blue-600 */
-      .token-number { color: #ea580c; } /* orange-600 */
-      .token-operator { color: #db2777; } /* pink-600 */
-      .token-punctuation { color: #475569; } /* slate-600 */
-
-      /* Syntax Highlighting - Dark Theme */
-      .dark .token-comment { color: #94a3b8; } /* slate-400 */
-      .dark .token-string { color: #4ade80; } /* green-400 */
-      .dark .token-keyword { color: #a78bfa; } /* violet-400 */
-      .dark .token-class-name { color: #f0abfc; } /* fuchsia-300 */
-      .dark .token-function { color: #93c5fd; } /* blue-300 */
-      .dark .token-number { color: #fb923c; } /* orange-400 */
-      .dark .token-operator { color: #f472b6; } /* pink-400 */
-      .dark .token-punctuation { color: #94a3b8; } /* slate-400 */
     </style>
+    <script>
+      // On page load or when changing themes, best to add inline in `head` to avoid FOUC
+      if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@mozilla/readability@0.5.0/Readability.js"></script>
   <script type="importmap">
 {
   "imports": {
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.16.0",
     "react/": "https://aistudiocdn.com/react@^19.1.1/",
     "react": "https://aistudiocdn.com/react@^19.1.1",
-    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.542.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/"
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.16.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.1.1/",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.417.0",
+    "react-dom": "https://aistudiocdn.com/react-dom@^19.1.1"
   }
 }
 </script>
@@ -79,7 +61,5 @@
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
-    <!-- For URL Reader Functionality -->
-    <script src="https://cdn.jsdelivr.net/npm/readability@0.2.0/Readability.min.js"></script>
   </body>
 </html>

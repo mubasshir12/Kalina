@@ -15,7 +15,6 @@ const stripMarkdown = (markdown: string): string => {
     .replace(/^#+\s/gm, '') // Remove heading markers
     .replace(/(\*\*|__)(.*?)\1/g, '$2') // Remove bold
     .replace(/(\*|_)(.*?)\1/g, '$2') // Remove italic
-    .replace(/`(.*?)`/g, '$1') // Remove inline code backticks
     .replace(/^\s*[-*]\s+/gm, '') // Remove unordered list markers
     .replace(/^\s*\d+\.\s+/gm, '') // Remove ordered list markers
     .replace(/\[\d+\]/g, '') // Remove citations

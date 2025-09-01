@@ -1,69 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { GroundingChunk } from '../types';
 import { Copy, Check, Play } from 'lucide-react';
 import CodePreviewModal from './CodePreviewModal';
-
-// Memoized component for syntax highlighting to prevent re-computation on every render.
-const HighlightedCode: React.FC<{ code: string; language: string }> = React.memo(({ code, language }) => {
-    const lang = language?.toLowerCase() || 'text';
-    const supportedLangs = ['javascript', 'js', 'jsx', 'typescript', 'ts', 'tsx', 'css', 'html', 'python', 'java', 'csharp', 'go', 'rust', 'sql', 'json'];
-
-    if (!supportedLangs.includes(lang)) {
-        return <>{code}</>; // Return plain code for unsupported languages
-    }
-
-    // Ordered list of token patterns. Order is crucial for correct matching.
-    const tokenPatterns: [string, RegExp][] = [
-        ['comment', /\/\*[\s\S]*?\*\/|\/\/.*/],
-        ['string', /"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*`|`(?:\\.|[^`\\])*`/],
-        ['keyword', /\b(?:const|let|var|if|else|for|while|function|return|import|export|from|class|extends|super|new|this|async|await|try|catch|finally|switch|case|default|break|continue|debugger|delete|in|instanceof|typeof|void|with|yield|true|false|null|undefined|get|set|public|private|protected|static|@media|@keyframes|!important)\b/],
-        ['class-name', /\b[A-Z][a-zA-Z0-9_]*/], // Catches PascalCase, often classes or components
-        ['function', /\b[a-zA-Z_][a-zA-Z0-9_]*(?=\s*\()/], // Catches function calls/definitions
-        ['number', /\b-?(?:0[xX][\dA-Fa-f]+|\d*\.?\d+(?:[eE][+-]?\d+)?)\b/],
-        ['operator', /[=+\-*/%&|<>!^~?:|]/],
-        ['punctuation', /[{}[\]();,.]/],
-    ];
-
-    const combinedRegex = new RegExp(
-        tokenPatterns.map(([, regex]) => `(${regex.source})`).join('|'),
-        'g'
-    );
-
-    const nodes: React.ReactNode[] = [];
-    let lastIndex = 0;
-    let match;
-    let key = 0;
-
-    while ((match = combinedRegex.exec(code)) !== null) {
-        // Add the plain text before the match
-        if (match.index > lastIndex) {
-            nodes.push(code.substring(lastIndex, match.index));
-        }
-
-        // Find which token pattern matched
-        const tokenIndex = match.slice(1).findIndex(m => m !== undefined);
-        if (tokenIndex !== -1) {
-            const [tokenType] = tokenPatterns[tokenIndex];
-            nodes.push(
-                <span key={key++} className={`token-${tokenType}`}>
-                    {match[0]}
-                </span>
-            );
-        } else {
-             nodes.push(match[0]); // Fallback for no specific match
-        }
-        
-        lastIndex = match.index + match[0].length;
-    }
-
-    // Add any remaining plain text at the end
-    if (lastIndex < code.length) {
-        nodes.push(code.substring(lastIndex));
-    }
-
-    return <>{nodes}</>;
-});
-
 
 interface CodeBlockProps {
     language: string;
@@ -145,7 +83,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({ language, code: initialCode, onPe
                 </div>
                 <pre className="p-4 text-sm whitespace-pre overflow-x-auto code-scrollbar">
                     <code className={`font-mono language-${language}`}>
-                        <HighlightedCode code={currentCode} language={language} />
+                        {currentCode}
                     </code>
                 </pre>
             </div>
@@ -184,20 +122,12 @@ const Citation: React.FC<{ source: GroundingChunk; index: number }> = ({ source,
 };
 
 
-// Parses inline markdown: `code`, **bold**, *italic*, citations [1], and links.
+// Parses inline markdown: **bold**, *italic*, citations [1], and links.
 const parseInline = (text: string, sources?: GroundingChunk[]): React.ReactNode => {
-    const regex = /(`.*?`|\*\*.*?\*\*|__.*?__|\*.*?\*|_.*?_|\[\d+\]|https?:\/\/\S+|www\.\S+)/g;
+    const regex = /(\*\*.*?\*\*|__.*?__|\*.*?\*|_.*?_|\[\d+\]|https?:\/\/\S+|www\.\S+)/g;
     const urlRegex = /^(https?:\/\/\S+|www\.\S+)$/;
 
     return text.split(regex).filter(Boolean).map((part, i) => {
-        if (part.startsWith('`') && part.endsWith('`')) {
-            return (
-                <code key={i} className="bg-gray-200 dark:bg-gray-700/60 text-gray-800 dark:text-gray-200 font-mono text-sm px-1.5 py-0.5 rounded-md mx-0.5">
-                    {part.slice(1, -1)}
-                </code>
-            );
-        }
-
         const citationMatch = part.match(/^\[(\d+)\]$/);
         if (citationMatch) {
             if (sources) {
