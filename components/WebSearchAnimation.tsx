@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { ThoughtStep } from '../types';
 
-const messages = [
+const staticMessages = [
     "Searching the web for real-time information...",
     "Analyzing top search results...",
     "Cross-referencing sources for accuracy...",
@@ -8,9 +9,19 @@ const messages = [
     "Fact-checking against multiple sources..."
 ];
 
-const WebSearchAnimation: React.FC = () => {
+interface WebSearchAnimationProps {
+    plan?: ThoughtStep[];
+}
+
+const WebSearchAnimation: React.FC<WebSearchAnimationProps> = ({ plan }) => {
+    const messages = plan && plan.length > 0 ? plan.map(p => p.concise_step) : staticMessages;
     const [currentMessageIndex, setCurrentMessageIndex] = useState(0);
     const [isFading, setIsFading] = useState(false);
+
+    useEffect(() => {
+        // Reset animation when a new plan is provided
+        setCurrentMessageIndex(0);
+    }, [plan]);
 
     useEffect(() => {
         const interval = setInterval(() => {
@@ -21,7 +32,7 @@ const WebSearchAnimation: React.FC = () => {
             }, 500); // Corresponds to fade out duration
         }, 2500);
         return () => clearInterval(interval);
-    }, []);
+    }, [messages]);
 
     return (
         <div className="flex flex-col items-center justify-center my-4 p-4 gap-6">

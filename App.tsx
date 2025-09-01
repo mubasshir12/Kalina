@@ -38,7 +38,7 @@ const App: React.FC = () => {
     const scrollContainerRef = useRef<HTMLDivElement>(null);
 
     const conversationManager = useConversations();
-    const { ltm, setLtm, codeMemory, setCodeMemory } = useMemory();
+    const { ltm, setLtm, codeMemory, setCodeMemory, userProfile, setUserProfile } = useMemory();
     const { speakingMessageId, handleToggleAudio, stopAudio, setSpeakingMessageId } = useAudio();
     
     const chatHandler = useChatHandler({
@@ -47,6 +47,7 @@ const App: React.FC = () => {
         activeConversationId: conversationManager.activeConversationId,
         ltm,
         codeMemory,
+        userProfile,
         selectedTool,
         selectedChatModel,
         imageGenerationPrompt,
@@ -56,6 +57,7 @@ const App: React.FC = () => {
         setActiveConversationId: conversationManager.setActiveConversationId,
         setLtm,
         setCodeMemory,
+        setUserProfile,
         setAllGeneratedImages,
         setIsImageOptionsOpen,
         setImageGenerationPrompt,

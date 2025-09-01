@@ -1,6 +1,6 @@
 
 import { Chat, Content } from "@google/genai";
-import { LTM, CodeSnippet } from "../types";
+import { LTM, CodeSnippet, UserProfile } from "../types";
 import { getAiClient } from "./aiClient";
 
 export const startChatSession = (
@@ -9,6 +9,7 @@ export const startChatSession = (
   isWebSearchEnabled: boolean,
   modelName: string = 'Kalina AI',
   ltm: LTM | undefined,
+  userProfile: UserProfile | undefined,
   isFirstMessage: boolean = false,
   history?: Content[],
   summary?: string,
@@ -31,23 +32,30 @@ Your Core Persona:
 1.  **Language and Tone Mirroring:** This is your HIGHEST priority. Adapt to the user's communication style (formal, casual, Hinglish).
 2.  **Maintain Your Persona:** While mirroring language, always maintain your core female persona.
 3.  **Dynamic & Natural Conversation:** Do not introduce yourself unless asked. Keep responses fresh.
-4.  **Operational Excellence:** Use markdown for clarity. Cite web sources smoothly without saying "I searched Google."`,
+4.  **Operational Excellence:** Use markdown for clarity. Cite web sources smoothly without saying "I searched Google."
+5.  **Handling Webpage Content:** If the user's prompt includes a block labeled "[EXTRACTED WEBPAGE CONTENT]", this is pre-processed, cleaned text from a URL. Your task is to use this content to answer the user's question. You can assume it represents the main information from the page. Do not mention that you are reading pre-processed content unless the user asks about your process.`,
   };
   
   if (isFirstMessage) {
-    config.systemInstruction += `\n5. **Conversation Title:** This is the first turn of a new conversation. Your response MUST begin with "TITLE: <Your 3-5 word, professional, English-language title here>" on a single line. The title should summarize the user's initial prompt. After the title line, add a newline, then proceed with your actual response. DO NOT include a title in any subsequent responses for this conversation.`;
+    config.systemInstruction += `\n6. **Conversation Title:** This is the first turn of a new conversation. Your response MUST begin with "TITLE: <Your 3-5 word, professional, English-language title here>" on a single line. The title should summarize the user's initial prompt. After the title line, add a newline, then proceed with your actual response. DO NOT include a title in any subsequent responses for this conversation.`;
   }
 
   let memoryInstruction = '';
+  if (userProfile?.name) {
+    memoryInstruction += `\n- You are speaking with ${userProfile.name}. Refer to them by name to personalize the conversation.`;
+  } else {
+    memoryInstruction += `\n- You do not know the user's name yet.`;
+  }
+
   if (ltm && ltm.length > 0) {
-    memoryInstruction += `\n\n---
-[Long Term Memory]
-Here are some facts you should remember about the user and conversation:
-${ltm.map(fact => `- ${fact}`).join('\n')}
-Use this information to personalize your responses and maintain context.
+    memoryInstruction += `\n- Here are additional facts you should remember about the user and conversation:\n${ltm.map(fact => `  - ${fact}`).join('\n')}`;
+  }
+  
+  if (memoryInstruction.trim()) {
+    config.systemInstruction += `\n\n---
+[Long Term Memory & User Profile]${memoryInstruction}
 ---`;
   }
-  config.systemInstruction += memoryInstruction;
 
   let contextInstruction = '';
   if (summary) {

@@ -7,6 +7,7 @@ import ImageModal from './ImageModal';
 import GeneratedImage from './GeneratedImage';
 import ConfirmationModal from './ConfirmationModal';
 import WebSearchAnimation from './WebSearchAnimation';
+import UrlReaderAnimation from './UrlReaderAnimation';
 
 const stripMarkdown = (markdown: string): string => {
   if (!markdown) return '';
@@ -14,6 +15,7 @@ const stripMarkdown = (markdown: string): string => {
     .replace(/^#+\s/gm, '') // Remove heading markers
     .replace(/(\*\*|__)(.*?)\1/g, '$2') // Remove bold
     .replace(/(\*|_)(.*?)\1/g, '$2') // Remove italic
+    .replace(/`(.*?)`/g, '$1') // Remove inline code backticks
     .replace(/^\s*[-*]\s+/gm, '') // Remove unordered list markers
     .replace(/^\s*\d+\.\s+/gm, '') // Remove ordered list markers
     .replace(/\[\d+\]/g, '') // Remove citations
@@ -24,6 +26,8 @@ interface ChatMessageProps extends ChatMessageType {
   isStreaming?: boolean;
   isThinking?: boolean;
   isSearchingWeb?: boolean;
+  isReadingUrl?: boolean;
+  isLongUrlRead?: boolean;
   onRetry?: () => void;
   index: number;
   onEditMessage?: (index: number, newContent: string) => void;
@@ -120,6 +124,8 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     isStreaming, 
     isThinking, 
     isSearchingWeb,
+    isReadingUrl,
+    isLongUrlRead,
     isGeneratingImage,
     isEditingImage,
     generatedImagesBase64,
@@ -128,6 +134,7 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
     isPlanning,
     sources,
     thoughts,
+    searchPlan,
     thinkingDuration,
     memoryUpdated,
     onRetry,
@@ -313,8 +320,10 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
           {memoryUpdated && <MemoryUpdateNotification />}
 
           {isPlanning && <SkeletonLoader />}
+          
+          {!isPlanning && isReadingUrl && <UrlReaderAnimation isLongUrlRead={isLongUrlRead} />}
 
-          {!isPlanning && showThinkingProcess && (
+          {!isPlanning && !isReadingUrl && showThinkingProcess && (
             <ThinkingProcess 
                 thoughts={thoughts || []} 
                 duration={thinkingDuration} 
@@ -322,10 +331,10 @@ const ChatMessage: React.FC<ChatMessageProps> = ({
             />
           )}
 
-          {!isPlanning && isGeneratingImage && <ImageGenerationLoader count={imageGenerationCount || 1} aspectRatio={aspectRatio} isEditing={isEditingImage} />}
+          {!isPlanning && !isReadingUrl && isGeneratingImage && <ImageGenerationLoader count={imageGenerationCount || 1} aspectRatio={aspectRatio} isEditing={isEditingImage} />}
           
-          {!isPlanning && !showThinkingProcess && !isGeneratingImage && isStreaming && !content && (!generatedImagesBase64 || generatedImagesBase64.length === 0) && (
-            isSearchingWeb ? <WebSearchAnimation /> : <SkeletonLoader />
+          {!isPlanning && !isReadingUrl && !showThinkingProcess && !isGeneratingImage && isStreaming && !content && (!generatedImagesBase64 || generatedImagesBase64.length === 0) && (
+            isSearchingWeb ? <WebSearchAnimation plan={searchPlan} /> : <SkeletonLoader />
           )}
 
           {(content || (generatedImagesBase64 && generatedImagesBase64.length > 0)) && (

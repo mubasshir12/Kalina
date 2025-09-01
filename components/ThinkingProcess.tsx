@@ -1,6 +1,9 @@
+
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { Info, ChevronDown, CheckCircle2, LoaderCircle, ChevronUp } from 'lucide-react';
+import { Info, ChevronDown, CheckCircle2, ChevronUp } from 'lucide-react';
 import { ThoughtStep } from '../types';
+import ThinkingAnimation from './ThinkingAnimation';
 
 interface ThinkingProcessProps {
     thoughts: ThoughtStep[];
@@ -46,17 +49,19 @@ const ThinkingProcess: React.FC<ThinkingProcessProps> = ({ thoughts, duration, i
     if (isThinking && safeThoughts.length > 0) {
         const currentThought = safeThoughts[currentIndex];
         return (
-            <div className="bg-gray-100 dark:bg-gray-800/50 rounded-lg mb-4 border border-gray-200 dark:border-gray-700 p-3 flex items-center gap-3 text-sm font-medium text-gray-700 dark:text-gray-300 transition-all duration-300">
-                <LoaderCircle className="h-4 w-4 text-gray-500 dark:text-gray-400 animate-spin flex-shrink-0" />
-                <div className="flex-grow overflow-hidden">
-                     <span
+            <div className="flex flex-col items-center justify-center my-4 gap-4">
+                <ThinkingAnimation />
+                <div className="text-center">
+                    <p
                         key={currentIndex}
-                        className={`transition-opacity duration-300 inline-block ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}
+                        className={`text-sm text-gray-500 dark:text-gray-400 transition-opacity duration-300 ${isFadingOut ? 'opacity-0' : 'opacity-100'}`}
                     >
                         {currentThought?.concise_step || 'Analyzing...'}
-                    </span>
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 font-mono mt-1">
+                        {(duration || 0).toFixed(1)}s
+                    </p>
                 </div>
-                <span className="ml-auto text-gray-500 dark:text-gray-400 flex-shrink-0">{(duration || 0).toFixed(1)}s</span>
             </div>
         );
     }

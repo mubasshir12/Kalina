@@ -1,6 +1,6 @@
 import React, { useState, KeyboardEvent, useRef, ChangeEvent, useEffect } from 'react';
 import { Suggestion, Tool } from '../types';
-import { Sparkles, ChevronDown, X, Paperclip, ArrowUp, Globe, BrainCircuit, Image, History, Expand, File, Presentation, FileText, Camera, Languages } from 'lucide-react';
+import { Sparkles, ChevronDown, X, Paperclip, ArrowUp, Globe, BrainCircuit, Image, History, Expand, File, Presentation, FileText, Camera, Languages, Link } from 'lucide-react';
 import ImageModal from './ImageModal';
 
 interface ChatInputProps {
@@ -19,6 +19,7 @@ interface ChatInputProps {
 const tools: { id: Tool; name: string; description: string; icon: React.ElementType }[] = [
     { id: 'smart', name: 'Smart Mode', description: 'Automatically uses the best tool for the job.', icon: Sparkles },
     { id: 'webSearch', name: 'Web Search', description: 'Searches the web for real-time info.', icon: Globe },
+    { id: 'urlReader', name: 'URL Reader', description: 'Reads content from a web page URL.', icon: Link },
     { id: 'thinking', name: 'Thinking', description: 'Shows the AI\'s step-by-step thought process.', icon: BrainCircuit },
     { id: 'imageGeneration', name: 'Image Generation', description: 'Creates or edits an image from a prompt.', icon: Image },
     { id: 'translator', name: 'Translator', description: 'Translates text between languages.', icon: Languages },
@@ -217,6 +218,9 @@ const ChatInput: React.FC<ChatInputProps> = ({
   const placeholderText = () => {
       if (selectedTool === 'imageGeneration') {
           return image ? "Describe the edits you want to make..." : "Enter a prompt to generate an image...";
+      }
+      if (selectedTool === 'urlReader') {
+          return "Enter a URL and ask a question...";
       }
       if (image) return "Describe the image or ask a question...";
       if (file) return `Ask a question about ${file.name}...`;

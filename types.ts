@@ -2,7 +2,7 @@ import React from 'react';
 
 export type ChatModel = 'gemini-2.5-flash' | 'gemini-2.5-pro';
 export type ControlState = 'auto' | 'on' | 'off';
-export type Tool = 'smart' | 'webSearch' | 'thinking' | 'imageGeneration' | 'translator';
+export type Tool = 'smart' | 'webSearch' | 'thinking' | 'imageGeneration' | 'translator' | 'urlReader';
 
 export type MessageRole = 'user' | 'model';
 
@@ -42,6 +42,7 @@ export interface ChatMessage {
   };
   sources?: GroundingChunk[];
   thoughts?: ThoughtStep[];
+  searchPlan?: ThoughtStep[];
   thinkingDuration?: number;
   isGeneratingImage?: boolean;
   isEditingImage?: boolean;
@@ -49,6 +50,8 @@ export interface ChatMessage {
   imageGenerationCount?: number;
   aspectRatio?: "1:1" | "16:9" | "9:16" | "4:3" | "3:4" | number;
   isPlanning?: boolean;
+  isReadingUrl?: boolean;
+  isLongUrlRead?: boolean;
   memoryUpdated?: boolean;
   inputTokens?: number;
   outputTokens?: number;
@@ -72,6 +75,11 @@ export interface Conversation {
   isPinned?: boolean;
   isGeneratingTitle?: boolean;
   summary?: string;
+}
+
+// User Profile for persistent user-specific info.
+export interface UserProfile {
+  name: string | null;
 }
 
 // Long-Term Memory: A global list of important facts.

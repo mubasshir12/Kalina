@@ -52,15 +52,27 @@ const allSuggestions: Suggestion[] = [
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectSuggestion }) => {
     const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+    const [firstSet, setFirstSet] = useState<Suggestion[]>([]);
+    const [secondSet, setSecondSet] = useState<Suggestion[]>([]);
+    const [isFirstSetShown, setIsFirstSetShown] = useState(true);
 
     useEffect(() => {
         const shuffled = [...allSuggestions].sort(() => 0.5 - Math.random());
-        setSuggestions(shuffled.slice(0, 4));
+        const set1 = shuffled.slice(0, 4);
+        const set2 = shuffled.slice(4, 8);
+        
+        setFirstSet(set1);
+        setSecondSet(set2);
+        setSuggestions(set1);
     }, []);
 
-    const moreSuggestion: Suggestion = {
-      text: "More",
-      prompt: "What are some other things you can do?",
+    const handleMoreClick = () => {
+        if (isFirstSetShown) {
+            setSuggestions(secondSet);
+        } else {
+            setSuggestions(firstSet);
+        }
+        setIsFirstSetShown(!isFirstSetShown);
     };
 
   return (
@@ -71,9 +83,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectSuggestion }) => 
         </h1>
       </div>
       <div className="flex flex-wrap justify-center items-center gap-3 w-full max-w-3xl">
-        {suggestions.map((suggestion, index) => (
+        {suggestions.map((suggestion) => (
             <button
-                key={index}
+                key={suggestion.prompt}
                 onClick={() => onSelectSuggestion(suggestion)}
                 className="flex items-center gap-2.5 bg-white dark:bg-[#1e1f22] p-3 pl-4 pr-5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-gray-200 dark:border-gray-700 shadow-sm"
                 aria-label={suggestion.text}
@@ -83,11 +95,11 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onSelectSuggestion }) => 
             </button>
         ))}
         <button
-          onClick={() => onSelectSuggestion(moreSuggestion)}
+          onClick={handleMoreClick}
           className="bg-white dark:bg-[#1e1f22] p-3 px-5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800/50 transition-colors duration-200 border border-gray-200 dark:border-gray-700 shadow-sm"
-          aria-label={moreSuggestion.text}
+          aria-label="Show more suggestions"
         >
-            <span className="font-medium text-gray-700 dark:text-gray-300">{moreSuggestion.text}</span>
+            <span className="font-medium text-gray-700 dark:text-gray-300">More</span>
         </button>
       </div>
     </div>

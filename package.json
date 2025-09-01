@@ -1,5 +1,5 @@
 {
-  "name": "kalina-ai-updated-new-version-4.5",
+  "name": "kalina-think-updated",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,10 +9,10 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "react": "^19.1.1",
     "@google/genai": "^1.16.0",
-    "react-dom": "^19.1.1",
-    "lucide-react": "^0.417.0"
+    "react": "^19.1.1",
+    "lucide-react": "^0.542.0",
+    "react-dom": "^19.1.1"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

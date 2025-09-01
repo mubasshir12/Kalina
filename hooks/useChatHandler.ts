@@ -1,12 +1,13 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Content, Part } from '@google/genai';
-import { ChatMessage as ChatMessageType, Suggestion, ChatModel, LTM, CodeSnippet, GroundingChunk } from '../types';
+import { Content, Part } from '@google/ai';
+import { ChatMessage as ChatMessageType, Suggestion, ChatModel, LTM, CodeSnippet, GroundingChunk, UserProfile } from '../types';
 import { initializeAiClient } from '../services/aiClient';
 import { startChatSession } from '../services/chatService';
 import { planResponse } from '../services/geminiService';
 import { generateImage, editImage } from '../services/imageService';
 import { updateMemory, summarizeConversation } from '../services/memoryService';
 import { processAndSaveCode, findRelevantCode } from '../services/codeService';
+import * as urlReaderService from '../services/urlReaderService';
 import { ImageGenerationOptions } from '../components/ImageOptionsModal';
 import { getFriendlyErrorMessage } from '../utils/errorUtils';
 
@@ -41,6 +42,7 @@ export const useChatHandler = ({
     activeConversationId,
     ltm,
     codeMemory,
+    userProfile,
     selectedTool,
     selectedChatModel,
     imageGenerationPrompt,
@@ -50,6 +52,7 @@ export const useChatHandler = ({
     setActiveConversationId,
     setLtm,
     setCodeMemory,
+    setUserProfile,
     setAllGeneratedImages,
     setIsImageOptionsOpen,
     setImageGenerationPrompt,
@@ -58,6 +61,7 @@ export const useChatHandler = ({
     const [isLoading, setIsLoading] = useState<boolean>(false);
     const [isThinking, setIsThinking] = useState<boolean>(false);
     const [isSearchingWeb, setIsSearchingWeb] = useState<boolean>(false);
+    const [isLongUrlRead, setIsLongUrlRead] = useState<boolean>(false);
     const [error, setError] = useState(null);
     const [elapsedTime, setElapsedTime] = useState(0);
 
@@ -174,6 +178,8 @@ export const useChatHandler = ({
         const planningMessage: ChatMessageType = { id: crypto.randomUUID(), role: 'model', content: '', isPlanning: true };
         updateConversationMessages(currentConversationId, prev => [...prev, newUserMessage, planningMessage]);
 
+        let longReadTimer: ReturnType<typeof setTimeout> | null = null;
+
         try {
             const plan = await planResponse(fullPrompt, image, file, selectedChatModel);
 
@@ -181,22 +187,90 @@ export const useChatHandler = ({
             let isWebSearchEnabled = plan.needsWebSearch;
             let isImageGeneration = !image && plan.isImageGenerationRequest;
             let isImageEdit = !!image && plan.isImageEditRequest;
+            let isUrlReadRequest = plan.isUrlReadRequest;
+            let finalPromptForModel = fullPrompt;
 
             if (selectedTool === 'imageGeneration') {
                 isImageGeneration = !image;
                 isImageEdit = !!image;
                 isWebSearchEnabled = false;
                 isThinkingEnabled = false;
+                isUrlReadRequest = false;
+            } else if (selectedTool === 'urlReader') {
+                isUrlReadRequest = true;
+                isWebSearchEnabled = false;
+                isThinkingEnabled = false;
+                isImageGeneration = false;
+                isImageEdit = false;
             } else if (selectedTool === 'thinking') {
                 isThinkingEnabled = true;
                 isWebSearchEnabled = false;
                 isImageGeneration = false;
                 isImageEdit = false;
+                isUrlReadRequest = false;
             } else if (selectedTool === 'webSearch') {
                 isWebSearchEnabled = true;
                 isImageGeneration = false;
                 isImageEdit = false;
                 isThinkingEnabled = false;
+                isUrlReadRequest = false;
+            }
+
+            if (isUrlReadRequest) {
+                const urlMatch = fullPrompt.match(/(https?:\/\/[^\s]+)/);
+                if (!urlMatch) {
+                    updateConversationMessages(currentConversationId, prev => {
+                        const newMessages = [...prev];
+                        newMessages[newMessages.length - 1] = { ...newMessages[newMessages.length - 1], isPlanning: false, content: "It looks like you want me to read a URL, but I couldn't find one in your message. Please provide a valid URL." };
+                        return newMessages;
+                    });
+                    setIsLoading(false);
+                    stopResponseTimer();
+                    return;
+                }
+                const url = urlMatch[0];
+                
+                longReadTimer = setTimeout(() => {
+                    setIsLongUrlRead(true);
+                    updateConversationMessages(currentConversationId, prev => {
+                        const updated = [...prev];
+                        const last = updated[updated.length - 1];
+                        if (last?.role === 'model') {
+                            updated[updated.length - 1] = { ...last, isLongUrlRead: true };
+                        }
+                        return updated;
+                    });
+                }, 20000); // 20 seconds
+                
+                updateConversationMessages(currentConversationId, prev => {
+                    const updated = [...prev];
+                    updated[updated.length - 1] = { ...updated[updated.length - 1], isPlanning: false, isReadingUrl: true };
+                    return updated;
+                });
+
+                try {
+                    const cleanedContent = await urlReaderService.fetchAndParseUrlContent(url);
+                    finalPromptForModel = `[URL: ${url}]\n\n[EXTRACTED WEBPAGE CONTENT]:\n${cleanedContent}\n\n[USER QUESTION]:\n${fullPrompt}`;
+                    isWebSearchEnabled = false;
+                    isThinkingEnabled = false;
+
+                    updateConversationMessages(currentConversationId, prev => {
+                         const updated = [...prev];
+                         updated[updated.length - 1] = { ...updated[updated.length - 1], isReadingUrl: false };
+                         return updated;
+                    });
+                } catch (urlError: any) {
+                    if (longReadTimer) clearTimeout(longReadTimer);
+                    setIsLongUrlRead(false);
+                    updateConversationMessages(currentConversationId, prev => {
+                        const newMessages = [...prev];
+                        newMessages[newMessages.length - 1] = { ...newMessages[newMessages.length - 1], isReadingUrl: false, isPlanning: false, content: `Sorry, I couldn't read that URL. Error: ${urlError.message}` };
+                        return newMessages;
+                    });
+                    setIsLoading(false);
+                    stopResponseTimer();
+                    return;
+                }
             }
 
             if (isFirstTurnInConversation && isImageGeneration) {
@@ -250,11 +324,24 @@ export const useChatHandler = ({
                 }, 100);
             }
 
-            if (isWebSearchEnabled) setIsSearchingWeb(true);
+            if (isWebSearchEnabled) {
+                setIsSearchingWeb(true);
+                if (plan.searchPlan && plan.searchPlan.length > 0) {
+                     updateConversationMessages(currentConversationId, prev => {
+                        const updated = [...prev];
+                        const last = updated[updated.length - 1];
+                        if (last?.role === 'model') {
+                            updated[updated.length - 1] = { ...last, searchPlan: plan.searchPlan };
+                        }
+                        return updated;
+                    });
+                }
+            }
 
             const currentConversationState = conversations.find(c => c.id === currentConversationId);
             const summary = currentConversationState?.summary;
-            const lastFourMessages = currentConversationState ? currentConversationState.messages.slice(-5, -1) : [];
+            // Refine STM to last 10 turns (20 messages)
+            const shortTermMemory = currentConversationState ? currentConversationState.messages.slice(-20) : [];
             
             let retrievedCodeSnippets: CodeSnippet[] = [];
             if (plan.needsCodeContext && codeMemory.length > 0) {
@@ -264,12 +351,12 @@ export const useChatHandler = ({
             }
 
             const modelName = models.find(m => m.id === selectedChatModel)?.name || 'Kalina AI';
-            const chat = startChatSession(selectedChatModel, isThinkingEnabled, isWebSearchEnabled, modelName, ltm, isFirstTurnInConversation, transformMessagesToHistory(lastFourMessages), summary, retrievedCodeSnippets);
+            const chat = startChatSession(selectedChatModel, isThinkingEnabled, isWebSearchEnabled, modelName, ltm, userProfile, isFirstTurnInConversation, transformMessagesToHistory(shortTermMemory), summary, retrievedCodeSnippets);
 
             const parts: Part[] = [
                 ...(image ? [{ inlineData: { data: image.base64, mimeType: image.mimeType } }] : []),
                 ...(file ? [{ inlineData: { data: file.base64, mimeType: file.mimeType } }] : []),
-                ...(fullPrompt ? [{ text: fullPrompt }] : []),
+                ...(finalPromptForModel ? [{ text: finalPromptForModel }] : []),
             ];
             
             if (parts.length === 0) throw new Error("Cannot send an empty message.");
@@ -304,6 +391,10 @@ export const useChatHandler = ({
                     }
                     if (isSearchingWeb) {
                         setIsSearchingWeb(false);
+                    }
+                    if (longReadTimer) {
+                        clearTimeout(longReadTimer);
+                        setIsLongUrlRead(false);
                     }
                     thinkingCleared = true;
                 }
@@ -351,8 +442,9 @@ export const useChatHandler = ({
             const finalCleanedResponse = finalModelResponse.replace(/^\s*TITLE:\s*[^\n]*\n?/, '');
             const finalConversationState = conversations.find(c => c.id === currentConversationId);
             if (finalConversationState && !isCancelledRef.current) {
-                if (finalConversationState.messages.length > 1 && finalConversationState.messages.length % 6 === 0) {
-                    summarizeConversation(transformMessagesToHistory(finalConversationState.messages.slice(-6)), finalConversationState.summary)
+                 // Generate episodic summary every ~15 turns (30 messages)
+                if (finalConversationState.messages.length > 1 && finalConversationState.messages.length % 30 === 0) {
+                    summarizeConversation(transformMessagesToHistory(finalConversationState.messages.slice(-30)), finalConversationState.summary)
                         .then(newSummary => updateConversation(currentConversationId, c => ({...c, summary: newSummary })));
                 }
 
@@ -366,17 +458,44 @@ export const useChatHandler = ({
                 }
 
                 if (finalCleanedResponse.trim()) {
-                    updateMemory([{ role: 'user', parts: [{ text: fullPrompt }] }, { role: 'model', parts: [{ text: finalCleanedResponse }] }], ltm, selectedChatModel)
-                        .then(newMemories => {
-                            if (newMemories.length > 0) {
-                                const uniqueNewMemories = newMemories.filter(mem => !ltm.includes(mem));
+                    updateMemory([{ role: 'user', parts: [{ text: fullPrompt }] }, { role: 'model', parts: [{ text: finalCleanedResponse }] }], ltm, userProfile, selectedChatModel)
+                        .then(memoryResult => {
+                            const { newMemories, updatedMemories, userProfileUpdates } = memoryResult;
+                            
+                            let ltmAfterUpdates = [...ltm];
+                            let memoryWasModified = false;
+
+                            // Process updates
+                            if (updatedMemories && updatedMemories.length > 0) {
+                                updatedMemories.forEach(update => {
+                                    const index = ltmAfterUpdates.findIndex(mem => mem === update.old_memory);
+                                    if (index !== -1) {
+                                        ltmAfterUpdates[index] = update.new_memory;
+                                        memoryWasModified = true;
+                                    }
+                                });
+                            }
+
+                            // Process additions
+                            if (newMemories && newMemories.length > 0) {
+                                const uniqueNewMemories = newMemories.filter(mem => !ltmAfterUpdates.includes(mem));
                                 if (uniqueNewMemories.length > 0) {
-                                    setLtm(prev => [...prev, ...uniqueNewMemories]);
-                                    updateConversationMessages(currentConversationId, prev => {
-                                        const last = prev[prev.length - 1];
-                                        return last?.role === 'model' ? [...prev.slice(0, -1), { ...last, memoryUpdated: true }] : prev;
-                                    });
+                                    ltmAfterUpdates.push(...uniqueNewMemories);
+                                    memoryWasModified = true;
                                 }
+                            }
+                            
+                            if (memoryWasModified) {
+                                setLtm(ltmAfterUpdates);
+                                updateConversationMessages(currentConversationId, prev => {
+                                    const last = prev[prev.length - 1];
+                                    return last?.role === 'model' ? [...prev.slice(0, -1), { ...last, memoryUpdated: true }] : prev;
+                                });
+                            }
+                            
+                            // Update user profile
+                            if (userProfileUpdates.name && userProfileUpdates.name !== userProfile.name) {
+                                setUserProfile(prev => ({ ...prev, name: userProfileUpdates.name }));
                             }
                         });
                 }
@@ -388,13 +507,16 @@ export const useChatHandler = ({
                 if (prev.length === 0) return prev;
                 const newMessages = [...prev];
                 const lastMessage = newMessages[newMessages.length - 1];
-                newMessages[newMessages.length - 1] = { ...lastMessage, isPlanning: false, isGeneratingImage: false, isEditingImage: false, content: `Sorry, I encountered an error: ${friendlyError.message}` };
+                newMessages[newMessages.length - 1] = { ...lastMessage, isPlanning: false, isGeneratingImage: false, isEditingImage: false, isReadingUrl: false, content: `Sorry, I encountered an error: ${friendlyError.message}` };
                 if (lastMessage.role === 'user') {
                     newMessages.push({ id: crypto.randomUUID(), role: 'model', content: `Sorry, I encountered an error: ${friendlyError.message}` });
                 }
                 return newMessages;
             });
         } finally {
+            if (longReadTimer) clearTimeout(longReadTimer);
+            setIsLongUrlRead(false);
+
             const finalElapsedTime = Date.now() - responseStartTimeRef.current;
             stopResponseTimer();
             
@@ -418,10 +540,10 @@ export const useChatHandler = ({
             isCancelledRef.current = false;
         }
     }, [
-        apiKey, isLoading, activeConversationId, conversations, selectedChatModel, selectedTool, ltm, codeMemory,
+        apiKey, isLoading, activeConversationId, conversations, selectedChatModel, selectedTool, ltm, codeMemory, userProfile,
         setConversations, setActiveConversationId, setError, setIsLoading, updateConversationMessages, 
         updateConversation, setAllGeneratedImages, setImageGenerationPrompt, setIsImageOptionsOpen, 
-        setIsThinking, setIsSearchingWeb, setCodeMemory, setLtm, setActiveSuggestion, clearThinkingIntervals, stopResponseTimer
+        setIsThinking, setIsSearchingWeb, setCodeMemory, setLtm, setUserProfile, setActiveSuggestion, clearThinkingIntervals, stopResponseTimer
     ]);
 
     const handleRetry = useCallback(() => {
